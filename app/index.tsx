@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/AppButton';
@@ -5,12 +6,18 @@ import { Screen } from '@/components/Screen';
 import { AppName, Colors, FontSize, Spacing } from '@/lib/constants';
 
 export default function HomeScreen() {
+  const router = useRouter();
+
   const handleStart = () => {
     console.log('Start Morning Rise pressed');
   };
 
   const handlePlan = () => {
     console.log('Plan the Ritual pressed');
+  };
+
+  const handleGratitude = () => {
+    router.push('/gratitude');
   };
 
   return (
@@ -26,6 +33,7 @@ export default function HomeScreen() {
       <View style={styles.actions}>
         <AppButton label="Start Morning Rise" onPress={handleStart} variant="primary" />
         <AppButton label="Plan the Ritual" onPress={handlePlan} variant="secondary" />
+        <AppButton label="Gratitude List" onPress={handleGratitude} variant="secondary" />
       </View>
     </Screen>
   );
