@@ -51,6 +51,24 @@ lib/
   types.ts          Shared TypeScript types
 ```
 
+## Deployment
+
+The web build auto-deploys to GitHub Pages via `.github/workflows/deploy-pages.yml`
+on every push to `main` (and the active feature branch). To enable it once:
+
+1. In the repo on GitHub → **Settings → Pages**
+2. Set **Source** to **GitHub Actions**
+
+The workflow runs `npx expo export --platform web` with `EXPO_BASE_URL` set to
+the repo path, then publishes the `dist/` folder. The live URL will be:
+
+```
+https://soroshahmadi-arise.github.io/PhoenixRIse-ReactNative/
+```
+
+Open it on your phone and use **Add to Home Screen** (Safari Share menu or
+Chrome's install prompt) for an app-like experience.
+
 ## Notes
 
 - One codebase for web, iOS, and Android — avoid platform-specific or native-only dependencies.
