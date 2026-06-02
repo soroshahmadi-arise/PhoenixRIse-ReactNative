@@ -19,6 +19,7 @@ import {
 
 import Svg, { Path } from 'react-native-svg';
 
+import { CaretLeft } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
 import { autoCorrectText, capitalizeVoiceTranscript } from '@/lib/autocap';
@@ -40,23 +41,6 @@ function MicIcon({ size, color }: { size: number; color: string }) {
         strokeLinecap="round"
       />
       <Path d="M12 18v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-}
-
-function ChevronLeftIcon({ color }: { color: string }) {
-  return (
-    <Svg
-      width={22}
-      height={22}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke={color}
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <Path d="M15 18l-6-6 6-6" />
     </Svg>
   );
 }
@@ -418,7 +402,7 @@ export default function GratitudeScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Back to home"
               >
-                <ChevronLeftIcon color={theme.colors.text} />
+                <CaretLeft size={22} color={theme.colors.text} />
               </Pressable>
               <Text style={styles.title} accessibilityRole="header">
                 Gratitude List

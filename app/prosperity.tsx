@@ -20,8 +20,15 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { CaretLeft } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
-import { STORAGE_KEY, type SpendItem } from '@/lib/prosperity';
+import {
+  depositForDay,
+  formatMoney,
+  isMilestoneDay,
+  STORAGE_KEY,
+  type SpendItem,
+} from '@/lib/prosperity';
 import { theme } from '@/lib/constants';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
@@ -43,19 +50,8 @@ type ResetSnapshot = {
 /* Game helpers                                                  */
 /* ──────────────────────────────────────────────────────────── */
 
-const DEPOSIT_STEP = 1000;
-
-/** Deposit for a given day: $1,000 × day. */
-const depositForDay = (day: number) => Math.max(0, day) * DEPOSIT_STEP;
-
-const formatMoney = (n: number) => '$' + Math.round(n).toLocaleString('en-US');
-
 const uid = () =>
   `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-
-/** Days worth celebrating as the deposit climbs. */
-const isMilestone = (d: number) =>
-  d === 5 || d === 10 || (d % 25 === 0 && d > 0);
 
 /* ──────────────────────────────────────────────────────────── */
 /* Screen                                                        */
@@ -266,7 +262,7 @@ export default function MoneyGameScreen() {
               accessibilityRole="button"
               accessibilityLabel="Back to home"
             >
-              <ChevronLeftIcon color={colors.textPrimary} />
+              <CaretLeft size={22} color={colors.textPrimary} />
             </Pressable>
             <Text style={styles.title} accessibilityRole="header">
               Prosperity Game
@@ -287,7 +283,7 @@ export default function MoneyGameScreen() {
           <DepositNotification
             day={day}
             amount={todaysDeposit}
-            milestone={isMilestone(day)}
+            milestone={isMilestoneDay(day)}
             onAccept={acceptDeposit}
           />
         )}
@@ -933,14 +929,6 @@ function UndoIcon({ color }: { color: string }) {
     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <Path d="M9 14L4 9l5-5" />
       <Path d="M4 9h11a4 4 0 0 1 0 8h-1" />
-    </Svg>
-  );
-}
-
-function ChevronLeftIcon({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M15 18l-6-6 6-6" />
     </Svg>
   );
 }
