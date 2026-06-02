@@ -23,8 +23,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowCounterClockwise,
   Banknote,
-  CaretDown,
-  ClockCounterClockwise,
   Gear,
   Image as ImageIcon,
   Plus,
@@ -43,7 +41,6 @@ import {
   formatMoney,
   itemsForDay,
   isMilestoneDay,
-  lookBack,
   spentForDay,
   STORAGE_KEY,
   totalSpentForItems,
@@ -120,8 +117,6 @@ export default function MoneyGameScreen() {
 
   // which day's spending the list is showing (defaults to the live day)
   const [viewDay, setViewDay] = useState(1);
-  // collapsed-by-default "Looking back" summary
-  const [showLookBack, setShowLookBack] = useState(false);
   // most-recently-added spend id — drives the entrance animation
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
 
@@ -137,7 +132,6 @@ export default function MoneyGameScreen() {
   const isViewingToday = viewDay === day;
   const viewItems = useMemo(() => itemsForDay(items, viewDay), [items, viewDay]);
   const spentOnViewDay = useMemo(() => spentForDay(items, viewDay), [items, viewDay]);
-  const summary = useMemo(() => lookBack(items, day), [items, day]);
   const dayChips = useMemo(() => {
     const past = daysWithSpending(items).filter((d) => d < day);
     return [day, ...past].map((d) => ({
@@ -392,92 +386,6 @@ export default function MoneyGameScreen() {
           </View>
         </View>
 
-        {day > 1 && (
-          <View style={styles.historyRow}>
-            {dayChips.length > 1 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.historyChipsScroll}
-                contentContainerStyle={styles.historyChipsRow}
-              >
-                {dayChips.map((chip) => {
-                  const isActive = chip.day === viewDay;
-                  return (
-                    <Pressable
-                      key={chip.day}
-                      onPress={() => setViewDay(chip.day)}
-                      style={({ pressed }) => [
-                        styles.historyChip,
-                        isActive && styles.historyChipActive,
-                        pressed && !isActive && styles.historyChipPressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: isActive }}
-                      accessibilityLabel={`${chip.label}, spent ${formatMoney(chip.total)}`}
-                    >
-                      <Text
-                        style={[styles.historyChipText, isActive && styles.historyChipTextActive]}
-                      >
-                        {chip.label}
-                      </Text>
-                      <Text
-                        style={[styles.historyChipCount, isActive && styles.historyChipCountActive]}
-                      >
-                        {formatMoney(chip.total)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
-
-            <Pressable
-              onPress={() => setShowLookBack((v) => !v)}
-              style={({ pressed }) => [
-                styles.lookBackTrigger,
-                showLookBack && styles.lookBackTriggerActive,
-                pressed && !showLookBack && styles.historyChipPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: showLookBack }}
-              accessibilityLabel="History"
-            >
-              <ClockCounterClockwise
-                size={13}
-                color={showLookBack ? '#fff' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.lookBackTriggerText,
-                  showLookBack && styles.lookBackTriggerTextActive,
-                ]}
-              >
-                History
-              </Text>
-              <View
-                style={{ transform: [{ rotate: showLookBack ? '180deg' : '0deg' }] }}
-              >
-                <CaretDown
-                  size={11}
-                  color={showLookBack ? '#fff' : colors.textMuted}
-                  weight="bold"
-                />
-              </View>
-            </Pressable>
-          </View>
-        )}
-
-        {day > 1 && showLookBack && (
-          <View style={styles.lookBackCard}>
-            <View style={styles.lookBackRow}>
-              <LookBackStat label="Day before" value={summary.yesterday} />
-              <LookBackStat label="Last 7 days" value={summary.last7} />
-              <LookBackStat label="Last 30 days" value={summary.last30} />
-            </View>
-          </View>
-        )}
-
         {isViewingToday ? (
           <View style={styles.composerInline}>
             <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
@@ -605,16 +513,43 @@ export default function MoneyGameScreen() {
           </View>
         )}
 
-        <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>
-            {isViewingToday ? "Today's spending" : `Day ${viewDay} spending`}
-          </Text>
-          {viewItems.length > 0 && (
-            <View style={styles.countPill}>
-              <Text style={styles.countPillText}>{viewItems.length}</Text>
-            </View>
-          )}
-        </View>
+        {dayChips.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.historyChipsScroll}
+            contentContainerStyle={styles.historyChipsRow}
+          >
+            {dayChips.map((chip) => {
+              const isActive = chip.day === viewDay;
+              return (
+                <Pressable
+                  key={chip.day}
+                  onPress={() => setViewDay(chip.day)}
+                  style={({ pressed }) => [
+                    styles.historyChip,
+                    isActive && styles.historyChipActive,
+                    pressed && !isActive && styles.historyChipPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${chip.label}, spent ${formatMoney(chip.total)}`}
+                >
+                  <Text
+                    style={[styles.historyChipText, isActive && styles.historyChipTextActive]}
+                  >
+                    {chip.label}
+                  </Text>
+                  <Text
+                    style={[styles.historyChipCount, isActive && styles.historyChipCountActive]}
+                  >
+                    {formatMoney(chip.total)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {viewItems.length === 0 ? (
           <EmptyState
@@ -918,16 +853,6 @@ function SpendRow({
         </Pressable>
       )}
     </Animated.View>
-  );
-}
-
-/* A single look-back stat (label + money), used in the history summary card. */
-function LookBackStat({ label, value }: { label: string; value: number }) {
-  return (
-    <View style={styles.lookBackStat}>
-      <Text style={styles.lookBackStatLabel}>{label}</Text>
-      <Text style={styles.lookBackStatValue}>{formatMoney(value)}</Text>
-    </View>
   );
 }
 
@@ -1392,18 +1317,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
   },
-  listHeader: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.md },
-  listTitle: { fontFamily: fonts.semiBold, fontSize: 16, fontWeight: '600', color: colors.textPrimary },
-  countPill: {
-    minWidth: 22,
-    height: 22,
-    borderRadius: radius.pill,
-    backgroundColor: colors.sage,
-    paddingHorizontal: 7,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countPillText: { fontFamily: fonts.bold, fontSize: 11, fontWeight: '700', color: '#fff' },
 
   /* Bottom action row (Skip to Day X + Done) — pinned, small inline buttons */
   bottomBar: {
@@ -1449,64 +1362,8 @@ const styles = StyleSheet.create({
     color: theme.buttons.primary.textColor,
   },
 
-  /* Look-back disclosure (trigger inline with chips, card revealed below) */
-  historyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: space.sm,
-    marginBottom: space.md,
-  },
-  lookBackTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingLeft: 10,
-    paddingRight: 8,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: colors.secondaryBorder,
-    backgroundColor: 'transparent',
-  },
-  lookBackTriggerActive: { backgroundColor: colors.accent, borderColor: colors.accent },
-  lookBackTriggerText: {
-    fontFamily: fonts.semiBold,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
-  lookBackTriggerTextActive: { color: '#fff' },
-
-  lookBackCard: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.secondaryBorder,
-    borderRadius: radius.lg,
-    paddingHorizontal: space.md,
-    paddingVertical: space.md,
-    marginBottom: space.md,
-  },
-  lookBackRow: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
-  lookBackStat: { flex: 1, minWidth: 0 },
-  lookBackStatLabel: {
-    fontFamily: fonts.medium,
-    fontSize: 11,
-    color: colors.textMuted,
-    marginBottom: 2,
-  },
-  lookBackStatValue: {
-    fontFamily: fonts.serif,
-    fontSize: 18,
-    fontWeight: '600',
-    color: colors.textPrimary,
-    letterSpacing: -0.4,
-    fontVariant: ['tabular-nums'],
-  },
-
-  /* History day chips (lives inside historyRow alongside the trigger) */
-  historyChipsScroll: { flex: 1, minWidth: 0 },
+  /* Day chips (horizontal scroller above the entries list) */
+  historyChipsScroll: { flexGrow: 0, marginBottom: space.md },
   historyChipsRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
   historyChip: {
     flexDirection: 'row',
