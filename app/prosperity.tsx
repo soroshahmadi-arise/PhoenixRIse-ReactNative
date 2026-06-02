@@ -567,27 +567,33 @@ export default function MoneyGameScreen() {
       </ScrollView>
 
       {/* ── Bottom action row: Skip to Day X · Done ───────────── */}
+      {/* flex:1 lives on the wrapper Views (the row's flex children), NOT on the
+          button surfaces — putting flex on the surface collapses its height. */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + space.md }]}>
-        <PressableScale
-          onPress={handleAdvanceDay}
-          disabled={!accepted}
-          style={styles.skipBtn}
-          pressedStyle={{ backgroundColor: theme.buttons.secondary.pressedBackground }}
-          disabledStyle={styles.skipBtnDisabled}
-          accessibilityLabel={
-            accepted ? `Skip to day ${day + 1}` : 'Accept the deposit before advancing the day'
-          }
-        >
-          <Text style={styles.skipBtnText}>Skip to Day {day + 1}</Text>
-        </PressableScale>
-        <PressableScale
-          onPress={goHome}
-          style={[styles.doneBtn, { backgroundColor: theme.buttons.primary.backgroundColor }]}
-          pressedStyle={{ backgroundColor: theme.buttons.primary.pressedBackground }}
-          accessibilityLabel="Done with Prosperity Game"
-        >
-          <Text style={styles.doneBtnText}>Done</Text>
-        </PressableScale>
+        <View style={styles.bottomBtnSlot}>
+          <PressableScale
+            onPress={handleAdvanceDay}
+            disabled={!accepted}
+            style={styles.skipBtn}
+            pressedStyle={{ backgroundColor: theme.buttons.secondary.pressedBackground }}
+            disabledStyle={styles.skipBtnDisabled}
+            accessibilityLabel={
+              accepted ? `Skip to day ${day + 1}` : 'Accept the deposit before advancing the day'
+            }
+          >
+            <Text style={styles.skipBtnText}>Skip to Day {day + 1}</Text>
+          </PressableScale>
+        </View>
+        <View style={styles.bottomBtnSlot}>
+          <PressableScale
+            onPress={goHome}
+            style={[styles.doneBtn, { backgroundColor: theme.buttons.primary.backgroundColor }]}
+            pressedStyle={{ backgroundColor: theme.buttons.primary.pressedBackground }}
+            accessibilityLabel="Done with Prosperity Game"
+          >
+            <Text style={styles.doneBtnText}>Done</Text>
+          </PressableScale>
+        </View>
       </View>
 
       {/* ── Settings sheet ───────────────────────────────────── */}
@@ -1309,15 +1315,18 @@ const styles = StyleSheet.create({
      full pill, 15pt label, same text color). */
   bottomBar: {
     flexDirection: 'row',
+    alignItems: 'stretch',
     gap: space.sm,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
+  /* Each slot takes half the row; flex lives here (not on the button surface,
+     where it would collapse the height). */
+  bottomBtnSlot: { flex: 1 },
   /* Skip = secondary (text-only on transparent surface, per design system) */
   skipBtn: {
-    flex: 1,
     height: INPUT_HEIGHT,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: space.md,
@@ -1336,7 +1345,6 @@ const styles = StyleSheet.create({
   },
   /* Done = primary (filled) */
   doneBtn: {
-    flex: 1,
     height: INPUT_HEIGHT,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: space.md,
