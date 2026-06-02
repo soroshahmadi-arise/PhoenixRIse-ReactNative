@@ -1261,9 +1261,16 @@ const styles = StyleSheet.create({
   addBtnText: { color: colors.primaryText, fontSize: 22, lineHeight: 24 },
 
   /* Settings sheet */
-  sheetRoot: { flex: 1, justifyContent: 'flex-end' },
+  sheetRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    // On desktop web the Modal escapes the app column, so re-center its
+    // contents to keep the mobile-width feel.
+    ...Platform.select({ web: { alignItems: 'center' }, default: {} }),
+  },
   sheetScrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(42,26,16,0.35)' },
   sheet: {
+    width: '100%',
     backgroundColor: colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1271,6 +1278,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 32,
     gap: space.md,
+    ...Platform.select({ web: { maxWidth: 420 }, default: {} }),
   },
   sheetGrabber: { width: 36, height: 4, borderRadius: radius.pill, backgroundColor: colors.secondaryBorder, alignSelf: 'center' },
   sheetTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
