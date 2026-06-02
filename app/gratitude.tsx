@@ -42,6 +42,23 @@ function MicIcon({ size, color }: { size: number; color: string }) {
   );
 }
 
+function ChevronLeftIcon({ color }: { color: string }) {
+  return (
+    <Svg
+      width={22}
+      height={22}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <Path d="M15 18l-6-6 6-6" />
+    </Svg>
+  );
+}
+
 const STORAGE_KEY = 'phoenix-rise/gratitude/v1';
 const SAVE_DEBOUNCE_MS = 300;
 
@@ -334,6 +351,11 @@ export default function GratitudeScreen() {
     else router.replace('/');
   };
 
+  const goHome = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
+
   const sections: Section[] = groupByMonth(items).map((g) => ({
     key: g.key,
     title: g.label,
@@ -375,6 +397,19 @@ export default function GratitudeScreen() {
       >
         <View style={styles.screen}>
           <View style={styles.topRegion}>
+            <Pressable
+              onPress={goHome}
+              hitSlop={10}
+              style={({ pressed }) => [
+                styles.backBtn,
+                pressed && styles.backBtnPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Back to home"
+            >
+              <ChevronLeftIcon color={theme.colors.text} />
+            </Pressable>
+
             <Text style={styles.eyebrow} accessibilityRole="header">
               WHAT ARE YOU GRATEFUL FOR TODAY?
             </Text>
@@ -524,7 +559,7 @@ export default function GratitudeScreen() {
                               isActive && styles.headerChipCountActive,
                             ]}
                           >
-                            {chip.count}
+                            {chip.count} {chip.count === 1 ? 'entry' : 'entries'}
                           </Text>
                         </Pressable>
                       );
@@ -578,6 +613,20 @@ const styles = StyleSheet.create({
     paddingTop: theme.spacing.sm,
     paddingBottom: theme.spacing.md,
     flexGrow: 1,
+  },
+
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    marginLeft: -10,
+    marginBottom: theme.spacing.xs,
+  },
+  backBtnPressed: {
+    backgroundColor: theme.colors.surfaceNested,
   },
 
   eyebrow: {
