@@ -46,7 +46,7 @@ import {
   totalSpentForItems,
   type SpendItem,
 } from '@/lib/prosperity';
-import { INPUT_HEIGHT, theme } from '@/lib/constants';
+import { theme } from '@/lib/constants';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
 /* ──────────────────────────────────────────────────────────── */
@@ -1318,7 +1318,9 @@ const styles = StyleSheet.create({
     paddingTop: space.lg,
   },
 
-  /* Bottom action row (Skip to Day X + Done) — pinned, small inline buttons */
+  /* Bottom action row (Skip to Day X + Done) — full-size pills. Height is
+     bumped above INPUT_HEIGHT (52) because half-width pills look stubby at
+     52; 60 gives the same visual weight as Gratitude's full-width Done. */
   bottomBar: {
     flexDirection: 'row',
     gap: space.sm,
@@ -1327,13 +1329,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
-  /* Skip = secondary (text-only on transparent surface, per design system).
-     Pill shape + INPUT_HEIGHT to match Gratitude's primary button exactly. */
+  /* Skip = secondary (text-only on transparent surface, per design system) */
   skipBtn: {
     flex: 1,
-    height: INPUT_HEIGHT,
+    height: 60,
     borderRadius: theme.borderRadius.full,
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
     backgroundColor: theme.buttons.secondary.backgroundColor,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1347,12 +1348,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.buttons.secondary.textColor,
   },
-  /* Done = primary (filled). Same height + pill shape as Gratitude's Done. */
+  /* Done = primary (filled) */
   doneBtn: {
     flex: 1,
-    height: INPUT_HEIGHT,
+    height: 60,
     borderRadius: theme.borderRadius.full,
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
