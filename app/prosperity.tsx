@@ -16,6 +16,7 @@ import {
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -59,6 +60,12 @@ const isMilestone = (d: number) =>
 
 export default function MoneyGameScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  const goHome = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
+  };
 
   // game state
   const [day, setDay] = useState(1);
@@ -236,7 +243,18 @@ export default function MoneyGameScreen() {
       {/* ── Fixed deposit header ─────────────────────────────── */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Prosperity game</Text>
+          <View style={styles.headerLeft}>
+            <Pressable
+              onPress={goHome}
+              style={styles.backBtn}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Back to home"
+            >
+              <ChevronLeftIcon color={colors.textPrimary} />
+            </Pressable>
+            <Text style={styles.title}>Prosperity game</Text>
+          </View>
           <Pressable
             onPress={() => setShowSettings(true)}
             style={styles.gearBtn}
@@ -841,6 +859,14 @@ function UndoIcon({ color }: { color: string }) {
   );
 }
 
+function ChevronLeftIcon({ color }: { color: string }) {
+  return (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M15 18l-6-6 6-6" />
+    </Svg>
+  );
+}
+
 /* ──────────────────────────────────────────────────────────── */
 /* Tokens — local names mapped onto the shared design system      */
 /* (lib/constants.ts) so this screen stays in sync with the app.  */
@@ -928,6 +954,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: space.xl,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  backBtn: {
+    width: 34,
+    height: 34,
+    marginLeft: -8,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: {
     fontFamily: fonts.serif,
