@@ -37,10 +37,16 @@ export const spentForDay = (items: SpendItem[], day: number) =>
   itemsForDay(items, day).reduce((sum, item) => sum + item.amount, 0);
 
 export const balanceFor = (totalReceived: number, totalSpent: number) =>
-  totalReceived - totalSpent;
+  Math.max(0, totalReceived - totalSpent);
 
 export const remainingForDay = (day: number, spentToday: number) =>
   depositForDay(day) - spentToday;
+
+export const canSpendAmount = (availableBalance: number, amount: number) =>
+  amount > 0 && amount <= Math.max(0, availableBalance);
+
+export const affordableSpendAmount = (availableBalance: number, requestedAmount: number) =>
+  Math.min(Math.max(0, availableBalance), Math.max(0, requestedAmount));
 
 export const acceptDeposit = (state: ProsperityState): ProsperityState => {
   if (state.accepted) return state;

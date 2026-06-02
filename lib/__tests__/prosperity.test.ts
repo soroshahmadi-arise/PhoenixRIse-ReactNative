@@ -1,6 +1,8 @@
 import {
   acceptDeposit,
+  affordableSpendAmount,
   balanceFor,
+  canSpendAmount,
   completeDay,
   depositForDay,
   formatMoney,
@@ -67,6 +69,24 @@ describe('spending calculations', () => {
     expect(balanceFor(3000, totalSpentForItems(items))).toBe(280);
     expect(remainingForDay(1, spentForDay(items, 1))).toBe(280);
     expect(remainingForDay(2, spentForDay(items, 2))).toBe(0);
+  });
+
+  it('never reports a negative balance', () => {
+    expect(balanceFor(1000, 1200)).toBe(0);
+  });
+
+  it('only allows spending up to the available bank balance', () => {
+    expect(canSpendAmount(500, 500)).toBe(true);
+    expect(canSpendAmount(500, 501)).toBe(false);
+    expect(canSpendAmount(500, 0)).toBe(false);
+    expect(canSpendAmount(-100, 1)).toBe(false);
+  });
+
+  it('caps requested spending to the available bank balance', () => {
+    expect(affordableSpendAmount(750, 1000)).toBe(750);
+    expect(affordableSpendAmount(750, 500)).toBe(500);
+    expect(affordableSpendAmount(0, 500)).toBe(0);
+    expect(affordableSpendAmount(750, -50)).toBe(0);
   });
 });
 

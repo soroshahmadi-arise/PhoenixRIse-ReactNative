@@ -32,7 +32,9 @@ import { PressableScale } from '@/components/PressableScale';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import {
   acceptDeposit as acceptDepositState,
+  affordableSpendAmount,
   balanceFor,
+  canSpendAmount,
   completeDay as completeDayState,
   depositForDay,
   formatMoney,
@@ -97,6 +99,7 @@ export default function MoneyGameScreen() {
   const [draftDesc, setDraftDesc] = useState('');
   const [draftAmount, setDraftAmount] = useState('');
   const [draftImage, setDraftImage] = useState<string | null>(null);
+  const [spendError, setSpendError] = useState('');
   const [focused, setFocused] = useState(false);
   const [resetSnapshot, setResetSnapshot] = useState<ResetSnapshot | null>(null);
 
@@ -110,14 +113,19 @@ export default function MoneyGameScreen() {
   const spentToday = useMemo(() => spentForDay(items, day), [items, day]);
   const remainingToday = remainingForDay(day, spentToday);
   const parsedAmount = parseInt((draftAmount || '').replace(/[^0-9]/g, ''), 10) || 0;
-  const canAdd = draftDesc.trim().length > 0 && parsedAmount > 0;
+  const amountExceedsBalance = parsedAmount > balance;
+  const canAdd = draftDesc.trim().length > 0 && canSpendAmount(balance, parsedAmount);
+  const affordableRemainingToday = affordableSpendAmount(balance, remainingToday);
+  const spendErrorText = amountExceedsBalance
+    ? `You only have ${formatMoney(balance)} in the bank.`
+    : spendError;
   const meterPct = todaysDeposit ? Math.min(1, Math.max(0, spentToday / todaysDeposit)) : 0;
 
   // Live, balance-aware prompt for the spend input (falls back when empty).
   const spendPlaceholder =
     balance > 0
       ? `You have ${formatMoney(balance)} to spend. On what?`
-      : 'How would you like to spend your money?';
+      : 'Accept a deposit before spending.';
 
   // balance "pop" whenever it changes (skipped under Reduce Motion)
   const balanceScale = useRef(new Animated.Value(1)).current;
@@ -187,6 +195,10 @@ export default function MoneyGameScreen() {
   /* ── actions ───────────────────────────────────────────────── */
 
   const handleAddItem = () => {
+    if (amountExceedsBalance) {
+      setSpendError(`You only have ${formatMoney(balance)} in the bank.`);
+      return;
+    }
     if (!canAdd) return;
     setItems((prev) => [
       ...prev,
@@ -201,6 +213,7 @@ export default function MoneyGameScreen() {
     setDraftDesc('');
     setDraftAmount('');
     setDraftImage(null);
+    setSpendError('');
     requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: true }));
   };
 
@@ -218,7 +231,10 @@ export default function MoneyGameScreen() {
     setItems((prev) => prev.filter((it) => it.id !== id));
 
   const handleSpendRest = () => {
-    if (remainingToday > 0) setDraftAmount(String(remainingToday));
+    if (affordableRemainingToday > 0) {
+      setDraftAmount(String(affordableRemainingToday));
+      setSpendError('');
+    }
   };
 
   const acceptDeposit = () => {
@@ -235,6 +251,7 @@ export default function MoneyGameScreen() {
     setDraftDesc('');
     setDraftAmount('');
     setDraftImage(null);
+    setSpendError('');
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   };
 
@@ -365,7 +382,10 @@ export default function MoneyGameScreen() {
         <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
           <TextInput
             value={draftDesc}
-            onChangeText={setDraftDesc}
+            onChangeText={(text) => {
+              setDraftDesc(text);
+              if (spendError) setSpendError('');
+            }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onSubmitEditing={handleAddItem}
@@ -414,7 +434,10 @@ export default function MoneyGameScreen() {
               <Text style={styles.amountPrefix}>$</Text>
               <TextInput
                 value={draftAmount}
-                onChangeText={(t) => setDraftAmount(t.replace(/[^0-9]/g, ''))}
+                onChangeText={(t) => {
+                  setDraftAmount(t.replace(/[^0-9]/g, ''));
+                  if (spendError) setSpendError('');
+                }}
                 onFocus={() => setFocused(true)}
                 onBlur={() => setFocused(false)}
                 onSubmitEditing={handleAddItem}
@@ -438,14 +461,16 @@ export default function MoneyGameScreen() {
               >
                 <ImageIcon size={18} color={colors.sageDark} />
               </Pressable>
-              {remainingToday > 0 && (
+              {affordableRemainingToday > 0 && (
                 <Pressable
                   onPress={handleSpendRest}
                   style={({ pressed }) => [styles.restBtn, pressed && { opacity: 0.7 }]}
                   accessibilityRole="button"
-                  accessibilityLabel="Use remaining amount"
+                  accessibilityLabel="Use available amount"
                 >
-                  <Text style={styles.restBtnText}>Use remaining</Text>
+                  <Text style={styles.restBtnText}>
+                    {affordableRemainingToday < remainingToday ? 'Use available' : 'Use remaining'}
+                  </Text>
                 </Pressable>
               )}
             </View>
@@ -461,6 +486,7 @@ export default function MoneyGameScreen() {
               <Plus size={20} color={colors.primaryText} />
             </PressableScale>
           </View>
+          {!!spendErrorText && <Text style={styles.spendError}>{spendErrorText}</Text>}
         </View>
       </View>
 
@@ -906,6 +932,7 @@ const colors = {
   primaryPressed: theme.colors.ctaHover,
   primaryText: theme.colors.background,
   disabled: theme.colors.disabled,
+  error: theme.colors.error,
   secondaryBorder: theme.colors.border,
   divider: theme.colors.border,
   sage: theme.colors.sage,
@@ -1289,6 +1316,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   restBtnText: { fontFamily: fonts.semiBold, fontSize: 13, fontWeight: '600', color: colors.eyebrow },
+  spendError: {
+    marginTop: space.sm,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.error,
+  },
   addBtn: {
     width: 38,
     height: 38,
