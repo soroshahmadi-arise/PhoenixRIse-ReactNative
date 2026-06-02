@@ -19,10 +19,12 @@ import {
 
 import Svg, { Path } from 'react-native-svg';
 
+import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
 import { autoCorrectText, capitalizeVoiceTranscript } from '@/lib/autocap';
 import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { GratitudeItem, formatStamp, groupByMonth } from '@/lib/gratitude';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 
 function MicIcon({ size, color }: { size: number; color: string }) {
   return (
@@ -112,10 +114,15 @@ type ListItemProps = {
 };
 
 function GratitudeListItemView({ item, isNew, onRemove }: ListItemProps) {
+  const reduceMotion = useReducedMotion();
   const anim = useRef(new Animated.Value(isNew ? 0 : 1)).current;
 
   useEffect(() => {
     if (!isNew) return;
+    if (reduceMotion) {
+      anim.setValue(1); // appear settled — no slide/scale/flash
+      return;
+    }
     Animated.timing(anim, {
       toValue: 1,
       duration: 720,
@@ -179,6 +186,7 @@ function GratitudeListItemView({ item, isNew, onRemove }: ListItemProps) {
 
 export default function GratitudeScreen() {
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
   const [items, setItems] = useState<GratitudeItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
@@ -319,22 +327,24 @@ export default function GratitudeScreen() {
     setDraft('');
     inputRef.current?.focus();
 
-    rippleScale.setValue(1);
-    rippleOpacity.setValue(0.45);
-    Animated.parallel([
-      Animated.timing(rippleScale, {
-        toValue: 2.6,
-        duration: 480,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-      Animated.timing(rippleOpacity, {
-        toValue: 0,
-        duration: 480,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (!reduceMotion) {
+      rippleScale.setValue(1);
+      rippleOpacity.setValue(0.45);
+      Animated.parallel([
+        Animated.timing(rippleScale, {
+          toValue: 2.6,
+          duration: 480,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(rippleOpacity, {
+          toValue: 0,
+          duration: 480,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
 
     setTimeout(() => {
       setLastAddedId((prev) => (prev === newId ? null : prev));
@@ -477,21 +487,17 @@ export default function GratitudeScreen() {
                       },
                     ]}
                   />
-                  <Pressable
+                  <PressableScale
                     onPress={handleAdd}
                     disabled={!canAdd}
                     hitSlop={8}
-                    style={({ pressed }) => [
-                      styles.addButton,
-                      !canAdd && styles.addButtonDisabled,
-                      pressed && canAdd && styles.addButtonPressed,
-                    ]}
-                    accessibilityRole="button"
+                    style={styles.addButton}
+                    pressedStyle={styles.addButtonPressed}
+                    disabledStyle={styles.addButtonDisabled}
                     accessibilityLabel="Add gratitude item"
-                    accessibilityState={{ disabled: !canAdd }}
                   >
                     <Text style={styles.addButtonIcon}>+</Text>
-                  </Pressable>
+                  </PressableScale>
                 </View>
               </View>
             </View>
@@ -582,21 +588,17 @@ export default function GratitudeScreen() {
           />
 
           <View style={styles.ctaWrap}>
-            <Pressable
+            <PressableScale
               onPress={handleSave}
-              style={({ pressed }) => [
+              style={[
                 styles.primaryButton,
-                {
-                  backgroundColor: pressed
-                    ? primaryBtn.pressedBackground
-                    : primaryBtn.backgroundColor,
-                },
+                { backgroundColor: primaryBtn.backgroundColor },
               ]}
-              accessibilityRole="button"
+              pressedStyle={{ backgroundColor: primaryBtn.pressedBackground }}
               accessibilityLabel="Save and exit"
             >
               <Text style={styles.primaryButtonText}>Save & Exit</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       </KeyboardAvoidingView>

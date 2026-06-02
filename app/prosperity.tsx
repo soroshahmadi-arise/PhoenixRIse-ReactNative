@@ -20,14 +20,17 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { PressableScale } from '@/components/PressableScale';
 import { STORAGE_KEY, type SpendItem } from '@/lib/prosperity';
 import { theme } from '@/lib/constants';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 
 /* ──────────────────────────────────────────────────────────── */
 /* Types                                                         */
 /* ──────────────────────────────────────────────────────────── */
 
 const SAVE_DEBOUNCE_MS = 300;
+const COMPOSER_SCROLL_CLEARANCE = 190;
 
 type ResetSnapshot = {
   day: number;
@@ -61,6 +64,7 @@ const isMilestone = (d: number) =>
 export default function MoneyGameScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const reduceMotion = useReducedMotion();
 
   const goHome = () => {
     if (router.canGoBack()) router.back();
@@ -110,9 +114,10 @@ export default function MoneyGameScreen() {
       ? `You have ${formatMoney(balance)} to spend. On what?`
       : 'How would you like to spend your money?';
 
-  // balance "pop" whenever it changes
+  // balance "pop" whenever it changes (skipped under Reduce Motion)
   const balanceScale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
+    if (reduceMotion) return;
     Animated.sequence([
       Animated.timing(balanceScale, {
         toValue: 1.06,
@@ -127,7 +132,7 @@ export default function MoneyGameScreen() {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [balance, balanceScale]);
+  }, [balance, balanceScale, reduceMotion]);
 
   /* ── persistence (load once, then debounced save) ──────────── */
 
@@ -304,15 +309,15 @@ export default function MoneyGameScreen() {
           <Text style={styles.meterLabel}>Total received {formatMoney(totalReceived)}</Text>
         </View>
 
-        <Pressable
+        <PressableScale
           onPress={handleAdvanceDay}
-          style={({ pressed }) => [styles.completeBtn, pressed && styles.completeBtnPressed]}
-          accessibilityRole="button"
+          style={styles.completeBtn}
+          pressedStyle={styles.completeBtnPressed}
           accessibilityLabel={`Complete day ${day}`}
         >
           <Text style={styles.completeBtnText}>Complete Day {day}</Text>
           <Text style={styles.completeBtnArrow}>→</Text>
-        </Pressable>
+        </PressableScale>
       </View>
 
       {/* ── Scrolling list ───────────────────────────────────── */}
@@ -378,7 +383,13 @@ export default function MoneyGameScreen() {
           {draftImage && (
             <View style={styles.thumbWrap}>
               <Image source={{ uri: draftImage }} style={styles.thumb} />
-              <Pressable onPress={() => setDraftImage(null)} style={styles.thumbRemove} hitSlop={6}>
+              <Pressable
+                onPress={() => setDraftImage(null)}
+                style={styles.thumbRemove}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="Remove picture"
+              >
                 <Text style={styles.thumbRemoveText}>×</Text>
               </Pressable>
             </View>
@@ -425,15 +436,16 @@ export default function MoneyGameScreen() {
               )}
             </View>
 
-            <Pressable
+            <PressableScale
               onPress={handleAddItem}
               disabled={!canAdd}
-              style={[styles.addBtn, !canAdd && styles.addBtnDisabled]}
-              accessibilityRole="button"
+              hitSlop={8}
+              style={styles.addBtn}
+              disabledStyle={styles.addBtnDisabled}
               accessibilityLabel="Add to today's list"
             >
               <Text style={styles.addBtnText}>＋</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       </View>
@@ -471,6 +483,7 @@ function DepositNotification({
   milestone: boolean;
   onAccept: () => void;
 }) {
+  const reduceMotion = useReducedMotion();
   const enter = useRef(new Animated.Value(0)).current; // 0 → 1 entrance
   const exit = useRef(new Animated.Value(0)).current; // 0 → 1 exit
   const float = useRef(new Animated.Value(0)).current; // badge float loop
@@ -478,6 +491,11 @@ function DepositNotification({
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
+    if (reduceMotion) {
+      enter.setValue(1); // present, settled — no slide, shimmer, or float
+      return;
+    }
+
     Animated.timing(enter, {
       toValue: 1,
       duration: 450,
@@ -511,11 +529,15 @@ function DepositNotification({
     );
     loop.start();
     return () => loop.stop();
-  }, [enter, shimmer, float]);
+  }, [enter, shimmer, float, reduceMotion]);
 
   const accept = () => {
     if (exiting) return;
     setExiting(true);
+    if (reduceMotion) {
+      onAccept(); // no exit animation — commit immediately
+      return;
+    }
     Animated.timing(exit, {
       toValue: 1,
       duration: 420,
@@ -543,7 +565,7 @@ function DepositNotification({
         style={[styles.notifyCard, { borderColor: t.border }]}
       >
         {/* one-time light shimmer */}
-        {!exiting && (
+        {!exiting && !reduceMotion && (
           <Animated.View
             pointerEvents="none"
             style={[styles.shimmer, { transform: [{ translateX: shimmerX }, { skewX: '-16deg' }] }]}
@@ -576,16 +598,16 @@ function DepositNotification({
         </View>
 
         {/* accept */}
-        <Pressable
+        <PressableScale
           onPress={accept}
-          style={({ pressed }) => [styles.notifyBtn, { backgroundColor: t.btnBg }, pressed && { opacity: 0.85 }]}
-          accessibilityRole="button"
+          style={[styles.notifyBtn, { backgroundColor: t.btnBg }]}
+          pressedStyle={{ opacity: 0.85 }}
           accessibilityLabel="Accept deposit"
         >
           <Text style={[styles.notifyBtnText, { color: t.btnColor }]}>
             {exiting ? 'Received ✓' : 'Accept'}
           </Text>
-        </Pressable>
+        </PressableScale>
       </LinearGradient>
     </Animated.View>
   );
@@ -771,16 +793,18 @@ function SettingsSheet({
                 <Text style={styles.resetBtnText}>Reset game</Text>
               </Pressable>
             )}
-            <Pressable
+            <PressableScale
               onPress={() => {
                 commitDay();
                 commitBalance();
                 onClose();
               }}
-              style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed]}
+              style={styles.saveBtn}
+              pressedStyle={styles.saveBtnPressed}
+              accessibilityLabel="Save settings"
             >
               <Text style={styles.saveBtnText}>Save</Text>
-            </Pressable>
+            </PressableScale>
           </View>
         </View>
       </View>
@@ -801,8 +825,13 @@ function Twinkle({
   duration: number;
   delay?: number;
 }) {
+  const reduceMotion = useReducedMotion();
   const v = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (reduceMotion) {
+      v.setValue(1); // hold steady at full brightness — no twinkle loop
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(v, {
@@ -822,7 +851,7 @@ function Twinkle({
     );
     loop.start();
     return () => loop.stop();
-  }, [v, duration, delay]);
+  }, [v, duration, delay, reduceMotion]);
   const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
   const scale = v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   return <Animated.View style={{ opacity, transform: [{ scale }] }}>{children}</Animated.View>;
@@ -1110,7 +1139,11 @@ const styles = StyleSheet.create({
 
   /* List */
   list: { flex: 1 },
-  listContent: { paddingHorizontal: space.lg, paddingTop: space.lg, paddingBottom: space.md },
+  listContent: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.lg,
+    paddingBottom: COMPOSER_SCROLL_CLEARANCE,
+  },
   listHeader: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.md },
   listTitle: { fontFamily: fonts.semiBold, fontSize: 16, fontWeight: '600', color: colors.textPrimary },
   countPill: {

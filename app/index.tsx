@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,8 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { EmberOrb } from '@/components/EmberOrb';
+import { PressableScale } from '@/components/PressableScale';
 import { theme, typography } from '@/lib/constants';
 import { timeOfDayGreeting } from '@/lib/greeting';
+import { useReducedMotion } from '@/lib/useReducedMotion';
 import { NAME_KEY } from '@/lib/user';
 
 /* ------------------------------------------------------------------ */
@@ -93,9 +94,14 @@ export default function HomeScreen() {
     };
   }, []);
 
-  /* ---- the orb's quiet breath ---- */
+  /* ---- the orb's quiet breath (stilled when Reduce Motion is on) ---- */
+  const reduceMotion = useReducedMotion();
   const breath = useRef(new Animated.Value(0)).current;
   useEffect(() => {
+    if (reduceMotion) {
+      breath.setValue(0.6); // rest at a calm, lit midpoint — no looping motion
+      return;
+    }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(breath, {
@@ -114,7 +120,7 @@ export default function HomeScreen() {
     );
     loop.start();
     return () => loop.stop();
-  }, [breath]);
+  }, [breath, reduceMotion]);
 
   const orbScale = breath.interpolate({ inputRange: [0, 1], outputRange: [1, 1.05] });
   const [glowLo, glowHi] = GLOW_RANGE[period];
@@ -172,11 +178,12 @@ export default function HomeScreen() {
             {RITUALS.map((r, i) => (
               <React.Fragment key={r.key}>
                 {i > 0 && <View style={styles.divider} />}
-                <Pressable
+                <PressableScale
                   onPress={() => router.push(r.route)}
-                  accessibilityRole="button"
                   accessibilityLabel={r.title}
-                  style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
+                  scaleTo={0.98}
+                  style={styles.row}
+                  pressedStyle={styles.rowPressed}
                 >
                   <View style={styles.rowText}>
                     <Text
@@ -200,7 +207,7 @@ export default function HomeScreen() {
                     <Text style={styles.appGlyph}>{r.glyph}</Text>
                   </View>
                   <Text style={styles.chevron}>›</Text>
-                </Pressable>
+                </PressableScale>
               </React.Fragment>
             ))}
           </View>
@@ -323,7 +330,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24, // lg
   },
   rowPressed: {
-    opacity: 0.6,
+    backgroundColor: theme.colors.warmOverlay,
   },
   rowText: {
     flex: 1,

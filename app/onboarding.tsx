@@ -4,7 +4,6 @@ import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmberOrb } from '@/components/EmberOrb';
+import { PressableScale } from '@/components/PressableScale';
 import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { timeOfDayGreeting } from '@/lib/greeting';
 import { NAME_KEY } from '@/lib/user';
@@ -61,20 +61,16 @@ export default function OnboardingScreen() {
 
           <View style={styles.spacer} />
 
-          <Pressable
+          <PressableScale
             onPress={handleBegin}
             disabled={!canBegin}
-            style={({ pressed }) => [
-              styles.ctaButton,
-              !canBegin && styles.ctaButtonDisabled,
-              pressed && canBegin && styles.ctaButtonPressed,
-            ]}
-            accessibilityRole="button"
+            style={styles.ctaButton}
+            pressedStyle={styles.ctaButtonPressed}
+            disabledStyle={styles.ctaButtonDisabled}
             accessibilityLabel="Let's begin"
-            accessibilityState={{ disabled: !canBegin }}
           >
             <Text style={styles.ctaText}>Let's Begin</Text>
-          </Pressable>
+          </PressableScale>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
