@@ -46,7 +46,7 @@ import {
   totalSpentForItems,
   type SpendItem,
 } from '@/lib/prosperity';
-import { theme } from '@/lib/constants';
+import { INPUT_HEIGHT, theme } from '@/lib/constants';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
 /* ──────────────────────────────────────────────────────────── */
@@ -548,7 +548,7 @@ export default function MoneyGameScreen() {
 
         {viewItems.length === 0 ? (
           <EmptyState
-            dayDeposit={depositForDay(viewDay)}
+            amount={isViewingToday ? balance : depositForDay(viewDay)}
             day={viewDay}
             viewingPast={!isViewingToday}
           />
@@ -856,11 +856,11 @@ function SpendRow({
 /* ──────────────────────────────────────────────────────────── */
 
 function EmptyState({
-  dayDeposit,
+  amount,
   day,
   viewingPast = false,
 }: {
-  dayDeposit: number;
+  amount: number;
   day?: number;
   viewingPast?: boolean;
 }) {
@@ -886,7 +886,7 @@ function EmptyState({
         </>
       ) : (
         <>
-          <Text style={styles.emptyTitle}>{formatMoney(dayDeposit)} is waiting</Text>
+          <Text style={styles.emptyTitle}>{formatMoney(amount)} is waiting</Text>
           <Text style={styles.emptyBody}>
             Start small or start big. A dinner. A donation. The house. The point is the feeling
             of having it.
@@ -1305,9 +1305,8 @@ const styles = StyleSheet.create({
     paddingTop: space.lg,
   },
 
-  /* Bottom action row (Skip to Day X + Done) — full-size pills. Height is
-     bumped above INPUT_HEIGHT (52) because half-width pills look stubby at
-     52; 60 gives the same visual weight as Gratitude's full-width Done. */
+  /* Bottom action row — matches Gratitude's Done exactly (INPUT_HEIGHT,
+     full pill, 15pt label, same text color). */
   bottomBar: {
     flexDirection: 'row',
     gap: space.sm,
@@ -1319,7 +1318,7 @@ const styles = StyleSheet.create({
   /* Skip = secondary (text-only on transparent surface, per design system) */
   skipBtn: {
     flex: 1,
-    height: 60,
+    height: INPUT_HEIGHT,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: space.md,
     backgroundColor: theme.buttons.secondary.backgroundColor,
@@ -1331,14 +1330,14 @@ const styles = StyleSheet.create({
   },
   skipBtnText: {
     fontFamily: fonts.semiBold,
-    fontSize: theme.buttons.secondary.fontSize,
+    fontSize: theme.buttons.primary.fontSize,
     fontWeight: '600',
     color: theme.buttons.secondary.textColor,
   },
   /* Done = primary (filled) */
   doneBtn: {
     flex: 1,
-    height: 60,
+    height: INPUT_HEIGHT,
     borderRadius: theme.borderRadius.full,
     paddingHorizontal: space.md,
     alignItems: 'center',
