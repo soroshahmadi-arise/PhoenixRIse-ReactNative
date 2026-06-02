@@ -462,32 +462,6 @@ export default function GratitudeScreen() {
             </View>
           </View>
 
-          {items.length > 0 ? (
-            <View style={styles.historyNav}>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.chipsScroll}
-                contentContainerStyle={styles.chipsRow}
-              >
-                {monthChips.map((chip, idx) => (
-                  <Pressable
-                    key={chip.key}
-                    onPress={() => handleChipPress(idx)}
-                    style={({ pressed }) => [styles.chip, pressed && styles.chipPressed]}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Jump to ${chip.label}`}
-                  >
-                    <Text style={styles.chipText}>{chip.label}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-              <Text style={styles.entryCount}>
-                {items.length} {items.length === 1 ? 'entry' : 'entries'}
-              </Text>
-            </View>
-          ) : null}
-
           <SectionList
             ref={sectionListRef}
             sections={sections}
@@ -509,12 +483,47 @@ export default function GratitudeScreen() {
                 </Text>
               </View>
             }
-            renderSectionHeader={({ section }) => (
-              <View style={styles.groupHeader}>
-                <Text style={styles.groupHeaderTitle}>{(section as Section).title}</Text>
-                <Text style={styles.groupHeaderCount}>{(section as Section).count}</Text>
-              </View>
-            )}
+            renderSectionHeader={({ section }) => {
+              const currentKey = (section as Section).key;
+              return (
+                <View style={styles.groupHeader}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.headerChipsScroll}
+                    contentContainerStyle={styles.headerChipsRow}
+                  >
+                    {monthChips.map((chip, idx) => {
+                      const isActive = chip.key === currentKey;
+                      return (
+                        <Pressable
+                          key={chip.key}
+                          onPress={() => handleChipPress(idx)}
+                          style={({ pressed }) => [
+                            styles.headerChip,
+                            isActive && styles.headerChipActive,
+                            pressed && !isActive && styles.chipPressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Jump to ${chip.label}`}
+                          accessibilityState={{ selected: isActive }}
+                        >
+                          <Text
+                            style={[
+                              styles.headerChipText,
+                              isActive && styles.headerChipTextActive,
+                            ]}
+                          >
+                            {chip.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <Text style={styles.groupHeaderCount}>{(section as Section).count}</Text>
+                </View>
+              );
+            }}
             renderItem={({ item }) => (
               <GratitudeListItemView
                 item={item}
@@ -660,41 +669,39 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
-  historyNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  chipsScroll: {
+  headerChipsScroll: {
     flex: 1,
     minWidth: 0,
   },
-  chipsRow: {
+  headerChipsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.sm,
+    gap: theme.spacing.xs + 2,
     paddingRight: theme.spacing.sm,
   },
-  chip: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: 6,
+  headerChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
     borderRadius: theme.borderRadius.full,
     borderWidth: 1,
     borderColor: theme.colors.border,
     backgroundColor: 'transparent',
   },
+  headerChipActive: {
+    backgroundColor: theme.colors.highlight,
+    borderColor: theme.colors.highlight,
+  },
   chipPressed: {
     backgroundColor: theme.colors.surfaceNested,
   },
-  chipText: {
-    ...typography.bodySmall,
+  headerChipText: {
+    fontFamily: theme.fontFamily.medium,
+    fontSize: 12,
+    lineHeight: 16,
     color: theme.colors.textBody,
   },
-  entryCount: {
-    ...typography.meta,
-    color: theme.colors.textLight,
-    flexShrink: 0,
+  headerChipTextActive: {
+    color: theme.colors.white,
   },
 
   groupHeader: {
@@ -706,10 +713,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm + 2,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  groupHeaderTitle: {
-    ...typography.headline3,
-    color: theme.colors.highlight,
   },
   groupHeaderCount: {
     ...typography.meta,
