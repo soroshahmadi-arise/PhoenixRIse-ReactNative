@@ -341,14 +341,13 @@ export default function GratitudeScreen() {
     data: g.items,
   }));
 
-  const currentYear = new Date().getFullYear();
   const monthChips = sections.map((s) => {
     const first = s.data[0];
     const d = new Date(first.createdAt);
     const monthAbbr = d.toLocaleString('en-US', { month: 'short' });
     return {
       key: s.key,
-      label: d.getFullYear() === currentYear ? monthAbbr : `${monthAbbr} ${d.getFullYear()}`,
+      label: `${monthAbbr} ${d.getFullYear()}`,
     };
   });
 
