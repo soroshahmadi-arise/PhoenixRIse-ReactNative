@@ -54,21 +54,7 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" />
             <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
-            <Stack.Screen
-              name="gratitude"
-              options={{
-                headerShown: true,
-                title: 'Gratitude',
-                headerBackTitle: 'Back',
-                headerStyle: { backgroundColor: theme.colors.background },
-                headerTintColor: theme.colors.text,
-                headerTitleStyle: {
-                  fontFamily: theme.fontFamily.semiBold,
-                  fontSize: 17,
-                },
-                headerShadowVisible: false,
-              }}
-            />
+            <Stack.Screen name="gratitude" options={{ headerShown: false }} />
             <Stack.Screen name="prosperity" options={{ headerShown: false }} />
             <Stack.Screen
               name="design-system"
