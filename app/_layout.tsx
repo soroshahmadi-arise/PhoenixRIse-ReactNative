@@ -63,6 +63,21 @@ export default function RootLayout() {
           }}
         />
         <Stack.Screen name="prosperity" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="design-system"
+          options={{
+            headerShown: true,
+            title: 'Design System',
+            headerBackTitle: 'Back',
+            headerStyle: { backgroundColor: theme.colors.background },
+            headerTintColor: theme.colors.text,
+            headerTitleStyle: {
+              fontFamily: theme.fontFamily.semiBold,
+              fontSize: 17,
+            },
+            headerShadowVisible: false,
+          }}
+        />
       </Stack>
     </SafeAreaProvider>
   );
