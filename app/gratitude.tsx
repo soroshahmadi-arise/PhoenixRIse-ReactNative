@@ -16,10 +16,30 @@ import {
   View,
 } from 'react-native';
 
+import Svg, { Path } from 'react-native-svg';
+
 import { Screen } from '@/components/Screen';
-import { autoCorrectText } from '@/lib/autocap';
+import { autoCorrectText, capitalizeVoiceTranscript } from '@/lib/autocap';
 import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { GratitudeItem, formatStamp, groupByMonth } from '@/lib/gratitude';
+
+function MicIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2C10.34 2 9 3.34 9 5v6c0 1.66 1.34 3 3 3s3-1.34 3-3V5c0-1.66-1.34-3-3-3z"
+        fill={color}
+      />
+      <Path
+        d="M19 10v1a7 7 0 01-14 0v-1"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path d="M12 18v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 const STORAGE_KEY = 'phoenix-rise/gratitude/v1';
 const SAVE_DEBOUNCE_MS = 300;
@@ -42,6 +62,29 @@ type Section = {
   title: string;
   count: number;
   data: GratitudeItem[];
+};
+
+type SpeechRecognitionResultLike = {
+  isFinal: boolean;
+  length: number;
+  0: { transcript: string };
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: { length: number; [index: number]: SpeechRecognitionResultLike };
+};
+
+type SpeechRecognitionInstance = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+  onend: ((event: unknown) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
 };
 
 type ListItemProps = {
@@ -123,10 +166,92 @@ export default function GratitudeScreen() {
   const [draft, setDraft] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
   const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rippleScale = useRef(new Animated.Value(1)).current;
   const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null);
+  const baseDraftRef = useRef('');
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const SR =
+      (globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .SpeechRecognition ??
+      (globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .webkitSpeechRecognition;
+    setSpeechSupported(!!SR);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.abort();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  const startListening = () => {
+    if (Platform.OS !== 'web') return;
+    const w = globalThis as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionInstance;
+      webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    };
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!SR) return;
+
+    baseDraftRef.current = draft;
+
+    const recognition = new SR();
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      const base = baseDraftRef.current;
+      const separator = base && !base.endsWith(' ') ? ' ' : '';
+      const cappedTranscript = capitalizeVoiceTranscript(transcript.trim());
+      setDraft(base + separator + cappedTranscript);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsListening(true);
+    } catch {
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMicTap = () => {
+    if (isListening) stopListening();
+    else startListening();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -164,6 +289,7 @@ export default function GratitudeScreen() {
   const handleAdd = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
+    if (isListening) stopListening();
     const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     LayoutAnimation.configureNext(layoutAnim);
     setItems((prev) => [
@@ -261,6 +387,24 @@ export default function GratitudeScreen() {
               />
 
               <View style={styles.composerActions}>
+                {speechSupported ? (
+                  <Pressable
+                    onPress={handleMicTap}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.micButton,
+                      isListening && styles.micButtonActive,
+                      pressed && !isListening && styles.micButtonPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={isListening ? 'Stop voice input' : 'Start voice input'}
+                  >
+                    <MicIcon
+                      size={16}
+                      color={isListening ? theme.colors.white : theme.colors.textBody}
+                    />
+                  </Pressable>
+                ) : null}
                 <View style={styles.addButtonWrap}>
                   <Animated.View
                     pointerEvents="none"
@@ -407,7 +551,26 @@ const styles = StyleSheet.create({
   composerActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
     marginTop: theme.spacing.sm,
+  },
+  micButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+  },
+  micButtonActive: {
+    backgroundColor: theme.colors.highlight,
+    borderColor: theme.colors.highlight,
+  },
+  micButtonPressed: {
+    backgroundColor: theme.colors.surfaceNested,
   },
   addButtonWrap: {
     width: 32,
