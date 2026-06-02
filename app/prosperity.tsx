@@ -46,7 +46,7 @@ import {
   totalSpentForItems,
   type SpendItem,
 } from '@/lib/prosperity';
-import { theme } from '@/lib/constants';
+import { INPUT_HEIGHT, theme } from '@/lib/constants';
 import { useReducedMotion } from '@/lib/useReducedMotion';
 
 /* ──────────────────────────────────────────────────────────── */
@@ -1327,11 +1327,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
-  /* Skip = secondary (text-only on transparent surface, per design system) */
+  /* Skip = secondary (text-only on transparent surface, per design system).
+     Pill shape + INPUT_HEIGHT to match Gratitude's primary button exactly. */
   skipBtn: {
     flex: 1,
-    height: theme.buttons.secondary.height,
-    borderRadius: theme.buttons.secondary.borderRadius,
+    height: INPUT_HEIGHT,
+    borderRadius: theme.borderRadius.full,
     paddingHorizontal: space.lg,
     backgroundColor: theme.buttons.secondary.backgroundColor,
     alignItems: 'center',
@@ -1346,11 +1347,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.buttons.secondary.textColor,
   },
-  /* Done = primary (filled, per design system) */
+  /* Done = primary (filled). Same height + pill shape as Gratitude's Done. */
   doneBtn: {
     flex: 1,
-    height: theme.buttons.primary.height,
-    borderRadius: theme.buttons.primary.borderRadius,
+    height: INPUT_HEIGHT,
+    borderRadius: theme.borderRadius.full,
     paddingHorizontal: space.lg,
     alignItems: 'center',
     justifyContent: 'center',
