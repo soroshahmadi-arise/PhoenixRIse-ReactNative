@@ -9,6 +9,8 @@
     "ios": "expo start --ios",
     "android": "expo start --android",
     "typecheck": "tsc --noEmit",
+    "lint:icons": "node scripts/check-icons.mjs",
+    "pretest": "node scripts/check-icons.mjs",
     "test": "jest"
   },
   "dependencies": {
