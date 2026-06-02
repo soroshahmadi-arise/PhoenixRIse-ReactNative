@@ -330,27 +330,32 @@ export default function MoneyGameScreen() {
           />
         )}
 
-        <View style={styles.statsRow}>
-          <View>
-            <Text style={styles.statLabel}>BALANCE</Text>
-            <Animated.Text
-              style={[styles.balanceValue, { transform: [{ scale: balanceScale }] }]}
-            >
-              {formatMoney(balance)}
-            </Animated.Text>
+        <View style={styles.statsCard}>
+          <View style={styles.statsRow}>
+            <View style={{ flexShrink: 1, minWidth: 0 }}>
+              <Text style={styles.statLabel}>BALANCE</Text>
+              <Animated.Text
+                style={[styles.balanceValue, { transform: [{ scale: balanceScale }] }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.7}
+              >
+                {formatMoney(balance)}
+              </Animated.Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={styles.statLabel}>DAY {day} DEPOSIT</Text>
+              <Text style={styles.depositValue}>{formatMoney(todaysDeposit)}</Text>
+            </View>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text style={styles.statLabel}>DAY {day} DEPOSIT</Text>
-            <Text style={styles.depositValue}>{formatMoney(todaysDeposit)}</Text>
-          </View>
-        </View>
 
-        <View style={styles.meterTrack}>
-          <View style={[styles.meterFill, { width: `${meterPct * 100}%` }]} />
-        </View>
-        <View style={styles.meterRow}>
-          <Text style={styles.meterLabel}>Spent today {formatMoney(spentToday)}</Text>
-          <Text style={styles.meterLabel}>Total received {formatMoney(totalReceived)}</Text>
+          <View style={styles.meterTrack}>
+            <View style={[styles.meterFill, { width: `${meterPct * 100}%` }]} />
+          </View>
+          <View style={styles.meterRow}>
+            <Text style={styles.meterLabel}>Spent today {formatMoney(spentToday)}</Text>
+            <Text style={styles.meterLabel}>Total received {formatMoney(totalReceived)}</Text>
+          </View>
         </View>
 
         <PressableScale
@@ -1120,7 +1125,7 @@ const styles = StyleSheet.create({
   /* Header */
   header: {
     paddingHorizontal: space.lg,
-    paddingBottom: 22,
+    paddingBottom: space.md,
     backgroundColor: colors.surfaceWarm,
     borderBottomWidth: 1,
     borderBottomColor: colors.divider,
@@ -1129,7 +1134,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: space.xl,
+    marginBottom: space.lg,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -1162,34 +1167,56 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  statsCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.secondaryBorder,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#593B2E',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 3 },
+      },
+      android: { elevation: 2 },
+      default: { boxShadow: '0 3px 10px rgba(89,59,46,0.05)' as any },
+    }),
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
-    marginBottom: space.md,
+    gap: space.md,
+    marginBottom: space.sm + 2,
   },
   statLabel: {
     fontFamily: fonts.bold,
-    fontSize: 11,
+    fontSize: 10.5,
     fontWeight: '700',
-    letterSpacing: 1.2,
+    letterSpacing: 1.1,
     color: colors.textMuted,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   balanceValue: {
     fontFamily: fonts.serif,
-    fontSize: 40,
-    lineHeight: 44,
+    fontSize: 30,
+    lineHeight: 34,
     fontWeight: '600',
     color: colors.accent,
-    letterSpacing: -1,
+    letterSpacing: -0.8,
+    fontVariant: ['tabular-nums'],
   },
   depositValue: {
     fontFamily: fonts.serif,
-    fontSize: 22,
+    fontSize: 18,
+    lineHeight: 22,
     fontWeight: '600',
     color: colors.textPrimary,
-    letterSpacing: -0.5,
+    letterSpacing: -0.4,
+    fontVariant: ['tabular-nums'],
   },
 
   meterTrack: {
@@ -1197,16 +1224,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.meterTrack,
     borderRadius: radius.pill,
     overflow: 'hidden',
-    marginBottom: space.sm,
+    marginBottom: 6,
   },
   meterFill: { height: '100%', backgroundColor: colors.sage, borderRadius: radius.pill },
   meterRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  meterLabel: { fontFamily: fonts.regular, fontSize: 12, color: colors.textMuted },
+  meterLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 11.5,
+    color: colors.textMuted,
+    fontVariant: ['tabular-nums'],
+  },
 
   completeBtn: {
-    marginTop: space.lg,
+    marginTop: space.md,
     width: '100%',
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: radius.pill,
     backgroundColor: colors.primary,
