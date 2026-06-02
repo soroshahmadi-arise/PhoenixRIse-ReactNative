@@ -11,7 +11,6 @@ import {
   Easing,
   StyleSheet,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -33,7 +32,6 @@ import { PressableScale } from '@/components/PressableScale';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import {
   acceptDeposit as acceptDepositState,
-  affordableSpendAmount,
   balanceFor,
   canSpendAmount,
   completeDay as completeDayState,
@@ -43,7 +41,6 @@ import {
   itemsForDay,
   isMilestoneDay,
   lookBack,
-  remainingForDay,
   spentForDay,
   STORAGE_KEY,
   totalSpentForItems,
@@ -57,7 +54,6 @@ import { useReducedMotion } from '@/lib/useReducedMotion';
 /* ──────────────────────────────────────────────────────────── */
 
 const SAVE_DEBOUNCE_MS = 300;
-const COMPOSER_SCROLL_CLEARANCE = 190;
 
 type ResetSnapshot = {
   day: number;
@@ -130,11 +126,12 @@ export default function MoneyGameScreen() {
       total: spentForDay(items, d),
     }));
   }, [items, day]);
-  const remainingToday = remainingForDay(day, spentToday);
   const parsedAmount = parseInt((draftAmount || '').replace(/[^0-9]/g, ''), 10) || 0;
   const amountExceedsBalance = parsedAmount > balance;
   const canAdd = draftDesc.trim().length > 0 && canSpendAmount(balance, parsedAmount);
-  const affordableRemainingToday = affordableSpendAmount(balance, remainingToday);
+  // Quick-fill always uses the full bank balance — never the day's leftover, and
+  // never more than you actually have. Hidden once the input already equals it.
+  const canQuickFill = balance > 0 && parsedAmount !== balance;
   const spendErrorText = amountExceedsBalance
     ? `You only have ${formatMoney(balance)} in the bank.`
     : spendError;
@@ -252,9 +249,9 @@ export default function MoneyGameScreen() {
   const handleRemoveItem = (id: string) =>
     setItems((prev) => prev.filter((it) => it.id !== id));
 
-  const handleSpendRest = () => {
-    if (affordableRemainingToday > 0) {
-      setDraftAmount(String(affordableRemainingToday));
+  const handleUseBalance = () => {
+    if (balance > 0) {
+      setDraftAmount(String(balance));
       setSpendError('');
     }
   };
@@ -300,10 +297,7 @@ export default function MoneyGameScreen() {
   /* ── render ─────────────────────────────────────────────────── */
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.screen}>
       {/* ── Fixed deposit header ─────────────────────────────── */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <ScreenHeader
@@ -378,8 +372,9 @@ export default function MoneyGameScreen() {
       <ScrollView
         ref={scrollRef}
         style={styles.list}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + space.xl }]}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
         showsVerticalScrollIndicator={false}
       >
         {day > 1 && (
@@ -434,6 +429,133 @@ export default function MoneyGameScreen() {
           </ScrollView>
         )}
 
+        {isViewingToday ? (
+          <View style={styles.composerInline}>
+            <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
+              <TextInput
+                value={draftDesc}
+                onChangeText={(text) => {
+                  setDraftDesc(text);
+                  if (spendError) setSpendError('');
+                }}
+                onFocus={() => setFocused(true)}
+                onBlur={() => setFocused(false)}
+                onSubmitEditing={handleAddItem}
+                onKeyPress={(e) => {
+                  const ev = e.nativeEvent as unknown as {
+                    key: string;
+                    shiftKey?: boolean;
+                    preventDefault?: () => void;
+                  };
+                  // Enter adds the entry; Shift+Enter inserts a newline.
+                  if (ev.key === 'Enter' && !ev.shiftKey) {
+                    ev.preventDefault?.();
+                    handleAddItem();
+                  }
+                }}
+                placeholder={spendPlaceholder}
+                placeholderTextColor={colors.textMuted}
+                multiline
+                blurOnSubmit={false}
+                returnKeyType="done"
+                {...({ enterKeyHint: 'done' } as object)}
+                textAlignVertical="top"
+                style={styles.descInput}
+                maxLength={200}
+                accessibilityLabel="Spending description"
+              />
+
+              {draftImage && (
+                <View style={styles.thumbWrap}>
+                  <Image source={{ uri: draftImage }} style={styles.thumb} />
+                  <Pressable
+                    onPress={() => setDraftImage(null)}
+                    style={styles.thumbRemove}
+                    hitSlop={12}
+                    accessibilityRole="button"
+                    accessibilityLabel="Remove picture"
+                  >
+                    <X size={14} color={colors.primaryText} />
+                  </Pressable>
+                </View>
+              )}
+
+              <View style={styles.composerActions}>
+                {/* amount, flush left */}
+                <View style={styles.amountRow}>
+                  <Text style={styles.amountPrefix}>$</Text>
+                  <TextInput
+                    value={draftAmount}
+                    onChangeText={(t) => {
+                      setDraftAmount(t.replace(/[^0-9]/g, ''));
+                      if (spendError) setSpendError('');
+                    }}
+                    onFocus={() => setFocused(true)}
+                    onBlur={() => setFocused(false)}
+                    onSubmitEditing={handleAddItem}
+                    placeholder="0"
+                    placeholderTextColor={colors.textMuted}
+                    keyboardType="number-pad"
+                    returnKeyType="done"
+                    style={styles.amountInput}
+                    accessibilityLabel="Spending amount"
+                  />
+                </View>
+
+                {/* grouped controls: photo + use balance */}
+                <View style={styles.groupedControls}>
+                  <Pressable
+                    onPress={handlePickImage}
+                    style={styles.photoBtn}
+                    hitSlop={4}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add a picture"
+                  >
+                    <ImageIcon size={18} color={colors.sageDark} />
+                  </Pressable>
+                  {canQuickFill && (
+                    <Pressable
+                      onPress={handleUseBalance}
+                      style={({ pressed }) => [styles.restBtn, pressed && { opacity: 0.7 }]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Use full balance, ${formatMoney(balance)}`}
+                    >
+                      <Text style={styles.restBtnText}>Use balance</Text>
+                    </Pressable>
+                  )}
+                </View>
+
+                <PressableScale
+                  onPress={handleAddItem}
+                  disabled={!canAdd}
+                  hitSlop={8}
+                  style={styles.addBtn}
+                  disabledStyle={styles.addBtnDisabled}
+                  accessibilityLabel="Add to today's list"
+                >
+                  <Plus size={20} color={colors.primaryText} />
+                </PressableScale>
+              </View>
+              {!!spendErrorText && <Text style={styles.spendError}>{spendErrorText}</Text>}
+            </View>
+          </View>
+        ) : (
+          <View style={styles.pastHintInline}>
+            <Text style={styles.pastHintText}>
+              Viewing Day {viewDay} · spent {formatMoney(spentOnViewDay)}
+            </Text>
+            <Pressable
+              onPress={() => setViewDay(day)}
+              style={({ pressed }) => [styles.pastHintBtn, pressed && { opacity: 0.7 }]}
+              accessibilityRole="button"
+              accessibilityLabel="Back to today"
+            >
+              <ArrowCounterClockwise size={15} color={colors.sageDark} />
+              <Text style={styles.pastHintBtnText}>Back to today</Text>
+            </Pressable>
+          </View>
+        )}
+
         <View style={styles.listHeader}>
           <Text style={styles.listTitle}>
             {isViewingToday ? "Today's spending" : `Day ${viewDay} spending`}
@@ -464,136 +586,6 @@ export default function MoneyGameScreen() {
         )}
       </ScrollView>
 
-      {/* ── Sticky composer (today) / past-day hint ──────────── */}
-      {!isViewingToday ? (
-        <View style={[styles.pastHint, { paddingBottom: insets.bottom + 16 }]}>
-          <Text style={styles.pastHintText}>
-            Viewing Day {viewDay} · spent {formatMoney(spentOnViewDay)}
-          </Text>
-          <Pressable
-            onPress={() => setViewDay(day)}
-            style={({ pressed }) => [styles.pastHintBtn, pressed && { opacity: 0.7 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Back to today"
-          >
-            <ArrowCounterClockwise size={15} color={colors.sageDark} />
-            <Text style={styles.pastHintBtnText}>Back to today</Text>
-          </Pressable>
-        </View>
-      ) : (
-      <View style={[styles.composer, { paddingBottom: insets.bottom + 16 }]}>
-        <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
-          <TextInput
-            value={draftDesc}
-            onChangeText={(text) => {
-              setDraftDesc(text);
-              if (spendError) setSpendError('');
-            }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            onSubmitEditing={handleAddItem}
-            onKeyPress={(e) => {
-              const ev = e.nativeEvent as unknown as {
-                key: string;
-                shiftKey?: boolean;
-                preventDefault?: () => void;
-              };
-              // Enter adds the entry; Shift+Enter inserts a newline.
-              if (ev.key === 'Enter' && !ev.shiftKey) {
-                ev.preventDefault?.();
-                handleAddItem();
-              }
-            }}
-            placeholder={spendPlaceholder}
-            placeholderTextColor={colors.textMuted}
-            multiline
-            blurOnSubmit={false}
-            returnKeyType="done"
-            {...({ enterKeyHint: 'done' } as object)}
-            textAlignVertical="top"
-            style={styles.descInput}
-            maxLength={200}
-            accessibilityLabel="Spending description"
-          />
-
-          {draftImage && (
-            <View style={styles.thumbWrap}>
-              <Image source={{ uri: draftImage }} style={styles.thumb} />
-              <Pressable
-                onPress={() => setDraftImage(null)}
-                style={styles.thumbRemove}
-                hitSlop={12}
-                accessibilityRole="button"
-                accessibilityLabel="Remove picture"
-              >
-                <X size={14} color={colors.primaryText} />
-              </Pressable>
-            </View>
-          )}
-
-          <View style={styles.composerActions}>
-            {/* amount, flush left */}
-            <View style={styles.amountRow}>
-              <Text style={styles.amountPrefix}>$</Text>
-              <TextInput
-                value={draftAmount}
-                onChangeText={(t) => {
-                  setDraftAmount(t.replace(/[^0-9]/g, ''));
-                  if (spendError) setSpendError('');
-                }}
-                onFocus={() => setFocused(true)}
-                onBlur={() => setFocused(false)}
-                onSubmitEditing={handleAddItem}
-                placeholder="0"
-                placeholderTextColor={colors.textMuted}
-                keyboardType="number-pad"
-                returnKeyType="done"
-                style={styles.amountInput}
-                accessibilityLabel="Spending amount"
-              />
-            </View>
-
-            {/* grouped controls: photo + spend the rest */}
-            <View style={styles.groupedControls}>
-              <Pressable
-                onPress={handlePickImage}
-                style={styles.photoBtn}
-                hitSlop={4}
-                accessibilityRole="button"
-                accessibilityLabel="Add a picture"
-              >
-                <ImageIcon size={18} color={colors.sageDark} />
-              </Pressable>
-              {affordableRemainingToday > 0 && (
-                <Pressable
-                  onPress={handleSpendRest}
-                  style={({ pressed }) => [styles.restBtn, pressed && { opacity: 0.7 }]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Use available amount"
-                >
-                  <Text style={styles.restBtnText}>
-                    {affordableRemainingToday < remainingToday ? 'Use available' : 'Use remaining'}
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-
-            <PressableScale
-              onPress={handleAddItem}
-              disabled={!canAdd}
-              hitSlop={8}
-              style={styles.addBtn}
-              disabledStyle={styles.addBtnDisabled}
-              accessibilityLabel="Add to today's list"
-            >
-              <Plus size={20} color={colors.primaryText} />
-            </PressableScale>
-          </View>
-          {!!spendErrorText && <Text style={styles.spendError}>{spendErrorText}</Text>}
-        </View>
-      </View>
-      )}
-
       {/* ── Settings sheet ───────────────────────────────────── */}
       <SettingsSheet
         visible={showSettings}
@@ -611,7 +603,7 @@ export default function MoneyGameScreen() {
           setShowSettings(false);
         }}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -1290,7 +1282,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: space.lg,
     paddingTop: space.lg,
-    paddingBottom: COMPOSER_SCROLL_CLEARANCE,
   },
   listHeader: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginBottom: space.md },
   listTitle: { fontFamily: fonts.semiBold, fontSize: 16, fontWeight: '600', color: colors.textPrimary },
@@ -1375,13 +1366,15 @@ const styles = StyleSheet.create({
   },
   historyChipCountActive: { color: 'rgba(255,255,255,0.82)' },
 
-  /* Past-day hint bar (replaces composer when browsing history) */
-  pastHint: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    paddingHorizontal: space.lg,
-    paddingTop: 14,
+  /* Past-day hint card (replaces the composer when browsing history) */
+  pastHintInline: {
+    backgroundColor: colors.surfaceWarm,
+    borderWidth: 1,
+    borderColor: colors.secondaryBorder,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm + 2,
+    marginBottom: space.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -1475,22 +1468,8 @@ const styles = StyleSheet.create({
   },
 
   /* Composer */
-  composer: {
-    backgroundColor: colors.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-    paddingHorizontal: space.lg,
-    paddingTop: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#8C4A14',
-        shadowOpacity: 0.06,
-        shadowRadius: 24,
-        shadowOffset: { width: 0, height: -8 },
-      },
-      android: { elevation: 8 },
-      default: { boxShadow: '0 -8px 24px rgba(140,74,20,0.06)' as any },
-    }),
+  composerInline: {
+    marginBottom: space.lg,
   },
   inputCard: {
     borderWidth: 1.5,
