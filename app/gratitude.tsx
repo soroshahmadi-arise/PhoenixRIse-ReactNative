@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
@@ -29,9 +31,8 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const fadeAnim: Parameters<typeof LayoutAnimation.configureNext>[0] = {
-  duration: 220,
-  create: { type: 'easeInEaseOut', property: 'opacity' },
+const layoutAnim: Parameters<typeof LayoutAnimation.configureNext>[0] = {
+  duration: 240,
   update: { type: 'easeInEaseOut' },
   delete: { type: 'easeInEaseOut', property: 'opacity' },
 };
@@ -43,14 +44,89 @@ type Section = {
   data: GratitudeItem[];
 };
 
+type ListItemProps = {
+  item: GratitudeItem;
+  isNew: boolean;
+  onRemove: (id: string) => void;
+};
+
+function GratitudeListItemView({ item, isNew, onRemove }: ListItemProps) {
+  const anim = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (!isNew) return;
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 720,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [0, 1, 1],
+    extrapolate: 'clamp',
+  });
+  const translateY = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [10, 0, 0],
+    extrapolate: 'clamp',
+  });
+  const scale = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [0.96, 1, 1],
+    extrapolate: 'clamp',
+  });
+  const borderColor = anim.interpolate({
+    inputRange: [0, 0.55, 1],
+    outputRange: [theme.colors.highlight, theme.colors.highlight, theme.colors.border],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.listItem,
+        {
+          opacity,
+          transform: [{ translateY }, { scale }],
+          borderColor,
+        },
+      ]}
+    >
+      <View style={styles.listItemDot} />
+      <View style={styles.listItemBody}>
+        <Text style={styles.listItemText}>{item.text}</Text>
+        <Text style={styles.listItemStamp}>{formatStamp(item.createdAt)}</Text>
+      </View>
+      <Pressable
+        onPress={() => onRemove(item.id)}
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.removeButton,
+          pressed && styles.removeButtonPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${item.text}`}
+      >
+        <Text style={styles.removeButtonText}>×</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function GratitudeScreen() {
   const router = useRouter();
   const [items, setItems] = useState<GratitudeItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rippleScale = useRef(new Animated.Value(1)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     let cancelled = false;
@@ -88,21 +164,40 @@ export default function GratitudeScreen() {
   const handleAdd = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    LayoutAnimation.configureNext(fadeAnim);
+    const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    LayoutAnimation.configureNext(layoutAnim);
     setItems((prev) => [
       ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        text: trimmed,
-        createdAt: Date.now(),
-      },
+      { id: newId, text: trimmed, createdAt: Date.now() },
     ]);
+    setLastAddedId(newId);
     setDraft('');
     inputRef.current?.focus();
+
+    rippleScale.setValue(1);
+    rippleOpacity.setValue(0.45);
+    Animated.parallel([
+      Animated.timing(rippleScale, {
+        toValue: 2.6,
+        duration: 480,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(rippleOpacity, {
+        toValue: 0,
+        duration: 480,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      setLastAddedId((prev) => (prev === newId ? null : prev));
+    }, 1200);
   };
 
   const handleRemove = (id: string) => {
-    LayoutAnimation.configureNext(fadeAnim);
+    LayoutAnimation.configureNext(layoutAnim);
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
@@ -166,21 +261,33 @@ export default function GratitudeScreen() {
               />
 
               <View style={styles.composerActions}>
-                <Pressable
-                  onPress={handleAdd}
-                  disabled={!canAdd}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.addButton,
-                    !canAdd && styles.addButtonDisabled,
-                    pressed && canAdd && styles.addButtonPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add gratitude item"
-                  accessibilityState={{ disabled: !canAdd }}
-                >
-                  <Text style={styles.addButtonIcon}>+</Text>
-                </Pressable>
+                <View style={styles.addButtonWrap}>
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.addButtonRipple,
+                      {
+                        opacity: rippleOpacity,
+                        transform: [{ scale: rippleScale }],
+                      },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={handleAdd}
+                    disabled={!canAdd}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.addButton,
+                      !canAdd && styles.addButtonDisabled,
+                      pressed && canAdd && styles.addButtonPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add gratitude item"
+                    accessibilityState={{ disabled: !canAdd }}
+                  >
+                    <Text style={styles.addButtonIcon}>+</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
@@ -193,13 +300,6 @@ export default function GratitudeScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              items.length > 0 ? (
-                <Text style={styles.countText}>
-                  {items.length} {items.length === 1 ? 'thing' : 'things'} so far
-                </Text>
-              ) : null
-            }
             ListEmptyComponent={
               <View style={styles.emptyState} accessibilityRole="text">
                 <View style={styles.emptyMark}>
@@ -219,25 +319,11 @@ export default function GratitudeScreen() {
               </View>
             )}
             renderItem={({ item }) => (
-              <View style={styles.listItem}>
-                <View style={styles.listItemDot} />
-                <View style={styles.listItemBody}>
-                  <Text style={styles.listItemText}>{item.text}</Text>
-                  <Text style={styles.listItemStamp}>{formatStamp(item.createdAt)}</Text>
-                </View>
-                <Pressable
-                  onPress={() => handleRemove(item.id)}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.removeButton,
-                    pressed && styles.removeButtonPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${item.text}`}
-                >
-                  <Text style={styles.removeButtonText}>×</Text>
-                </Pressable>
-              </View>
+              <GratitudeListItemView
+                item={item}
+                isNew={item.id === lastAddedId}
+                onRemove={handleRemove}
+              />
             )}
             ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
             SectionSeparatorComponent={({ leadingItem }) =>
@@ -323,6 +409,12 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     marginTop: theme.spacing.sm,
   },
+  addButtonWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   addButton: {
     width: 32,
     height: 32,
@@ -337,17 +429,19 @@ const styles = StyleSheet.create({
   addButtonPressed: {
     backgroundColor: '#9A5731',
   },
+  addButtonRipple: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.highlight,
+  },
   addButtonIcon: {
     color: theme.colors.white,
     fontFamily: theme.fontFamily.semiBold,
     fontSize: 20,
     lineHeight: 22,
     includeFontPadding: false,
-  },
-
-  countText: {
-    ...typography.meta,
-    marginBottom: theme.spacing.md,
   },
 
   groupHeader: {
