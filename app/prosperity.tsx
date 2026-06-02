@@ -345,9 +345,25 @@ export default function MoneyGameScreen() {
             onChangeText={setDraftDesc}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
+            onSubmitEditing={handleAddItem}
+            onKeyPress={(e) => {
+              const ev = e.nativeEvent as unknown as {
+                key: string;
+                shiftKey?: boolean;
+                preventDefault?: () => void;
+              };
+              // Enter adds the entry; Shift+Enter inserts a newline.
+              if (ev.key === 'Enter' && !ev.shiftKey) {
+                ev.preventDefault?.();
+                handleAddItem();
+              }
+            }}
             placeholder="How would you like to spend your money?"
             placeholderTextColor={colors.textMuted}
             multiline
+            blurOnSubmit={false}
+            returnKeyType="done"
+            {...({ enterKeyHint: 'done' } as object)}
             textAlignVertical="top"
             style={styles.descInput}
             maxLength={200}
