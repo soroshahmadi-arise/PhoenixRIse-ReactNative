@@ -348,6 +348,7 @@ export default function GratitudeScreen() {
     return {
       key: s.key,
       label: `${monthAbbr} ${d.getFullYear()}`,
+      count: s.count,
     };
   });
 
@@ -484,6 +485,7 @@ export default function GratitudeScreen() {
             }
             renderSectionHeader={({ section }) => {
               const currentKey = (section as Section).key;
+              const activeIndex = monthChips.findIndex((c) => c.key === currentKey);
               return (
                 <View style={styles.groupHeader}>
                   <ScrollView
@@ -491,9 +493,10 @@ export default function GratitudeScreen() {
                     showsHorizontalScrollIndicator={false}
                     style={styles.headerChipsScroll}
                     contentContainerStyle={styles.headerChipsRow}
+                    contentOffset={{ x: Math.max(0, activeIndex * 96 - 16), y: 0 }}
                   >
                     {monthChips.map((chip, idx) => {
-                      const isActive = chip.key === currentKey;
+                      const isActive = idx === activeIndex;
                       return (
                         <Pressable
                           key={chip.key}
@@ -504,7 +507,7 @@ export default function GratitudeScreen() {
                             pressed && !isActive && styles.chipPressed,
                           ]}
                           accessibilityRole="button"
-                          accessibilityLabel={`Jump to ${chip.label}`}
+                          accessibilityLabel={`Jump to ${chip.label}, ${chip.count} ${chip.count === 1 ? 'entry' : 'entries'}`}
                           accessibilityState={{ selected: isActive }}
                         >
                           <Text
@@ -515,11 +518,18 @@ export default function GratitudeScreen() {
                           >
                             {chip.label}
                           </Text>
+                          <Text
+                            style={[
+                              styles.headerChipCount,
+                              isActive && styles.headerChipCountActive,
+                            ]}
+                          >
+                            {chip.count}
+                          </Text>
                         </Pressable>
                       );
                     })}
                   </ScrollView>
-                  <Text style={styles.groupHeaderCount}>{(section as Section).count}</Text>
                 </View>
               );
             }}
@@ -679,6 +689,9 @@ const styles = StyleSheet.create({
     paddingRight: theme.spacing.sm,
   },
   headerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: theme.borderRadius.full,
@@ -702,6 +715,15 @@ const styles = StyleSheet.create({
   headerChipTextActive: {
     color: theme.colors.white,
   },
+  headerChipCount: {
+    fontFamily: theme.fontFamily.semiBold,
+    fontSize: 11,
+    lineHeight: 14,
+    color: theme.colors.textLight,
+  },
+  headerChipCountActive: {
+    color: 'rgba(255,255,255,0.78)',
+  },
 
   groupHeader: {
     flexDirection: 'row',
@@ -712,10 +734,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm + 2,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  groupHeaderCount: {
-    ...typography.meta,
-    color: theme.colors.textLight,
   },
 
   emptyState: {
