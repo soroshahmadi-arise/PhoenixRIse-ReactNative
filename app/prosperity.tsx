@@ -398,40 +398,6 @@ export default function MoneyGameScreen() {
 
         {day > 1 && (
           <View style={styles.historyRow}>
-            <Pressable
-              onPress={() => setShowLookBack((v) => !v)}
-              style={({ pressed }) => [
-                styles.lookBackTrigger,
-                showLookBack && styles.lookBackTriggerActive,
-                pressed && !showLookBack && styles.historyChipPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: showLookBack }}
-              accessibilityLabel="Looking back"
-            >
-              <ClockCounterClockwise
-                size={13}
-                color={showLookBack ? '#fff' : colors.textSecondary}
-              />
-              <Text
-                style={[
-                  styles.lookBackTriggerText,
-                  showLookBack && styles.lookBackTriggerTextActive,
-                ]}
-              >
-                Looking back
-              </Text>
-              <View
-                style={{ transform: [{ rotate: showLookBack ? '180deg' : '0deg' }] }}
-              >
-                <CaretDown
-                  size={11}
-                  color={showLookBack ? '#fff' : colors.textMuted}
-                  weight="bold"
-                />
-              </View>
-            </Pressable>
-
             {dayChips.length > 1 && (
               <ScrollView
                 horizontal
@@ -469,6 +435,40 @@ export default function MoneyGameScreen() {
                 })}
               </ScrollView>
             )}
+
+            <Pressable
+              onPress={() => setShowLookBack((v) => !v)}
+              style={({ pressed }) => [
+                styles.lookBackTrigger,
+                showLookBack && styles.lookBackTriggerActive,
+                pressed && !showLookBack && styles.historyChipPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: showLookBack }}
+              accessibilityLabel="History"
+            >
+              <ClockCounterClockwise
+                size={13}
+                color={showLookBack ? '#fff' : colors.textSecondary}
+              />
+              <Text
+                style={[
+                  styles.lookBackTriggerText,
+                  showLookBack && styles.lookBackTriggerTextActive,
+                ]}
+              >
+                History
+              </Text>
+              <View
+                style={{ transform: [{ rotate: showLookBack ? '180deg' : '0deg' }] }}
+              >
+                <CaretDown
+                  size={11}
+                  color={showLookBack ? '#fff' : colors.textMuted}
+                  weight="bold"
+                />
+              </View>
+            </Pressable>
           </View>
         )}
 
@@ -1465,7 +1465,8 @@ const styles = StyleSheet.create({
   historyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xs + 2,
+    justifyContent: 'flex-end',
+    gap: space.sm,
     marginBottom: space.md,
   },
   lookBackTrigger: {
