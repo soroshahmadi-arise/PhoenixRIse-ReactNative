@@ -15,18 +15,15 @@ import {
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { STORAGE_KEY, type SpendItem } from '@/lib/prosperity';
 
 /* ──────────────────────────────────────────────────────────── */
 /* Types                                                         */
 /* ──────────────────────────────────────────────────────────── */
 
-type SpendItem = {
-  id: string;
-  description: string;
-  amount: number;
-  image?: string | null;
-  day: number;
-};
+const SAVE_DEBOUNCE_MS = 300;
 
 type ResetSnapshot = {
   day: number;
@@ -63,6 +60,10 @@ export default function MoneyGameScreen() {
   const [totalReceived, setTotalReceived] = useState(0);
   const [items, setItems] = useState<SpendItem[]>([]);
   const [accepted, setAccepted] = useState(false);
+
+  // persistence
+  const [loaded, setLoaded] = useState(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ui / form state
   const [showSettings, setShowSettings] = useState(false);
@@ -109,6 +110,48 @@ export default function MoneyGameScreen() {
       }),
     ]).start();
   }, [balance, balanceScale]);
+
+  /* ── persistence (load once, then debounced save) ──────────── */
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => {
+        if (cancelled || !raw) return;
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            if (typeof parsed.day === 'number') setDay(parsed.day);
+            if (typeof parsed.totalReceived === 'number')
+              setTotalReceived(parsed.totalReceived);
+            if (Array.isArray(parsed.items)) setItems(parsed.items);
+            if (typeof parsed.accepted === 'boolean') setAccepted(parsed.accepted);
+          }
+        } catch {
+          // start fresh on parse error
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ day, totalReceived, items, accepted }),
+      ).catch(() => {});
+    }, SAVE_DEBOUNCE_MS);
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [day, totalReceived, items, accepted, loaded]);
 
   /* ── actions ───────────────────────────────────────────────── */
 
