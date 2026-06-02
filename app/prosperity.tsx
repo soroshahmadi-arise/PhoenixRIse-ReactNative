@@ -104,6 +104,12 @@ export default function MoneyGameScreen() {
   const canAdd = draftDesc.trim().length > 0 && parsedAmount > 0;
   const meterPct = todaysDeposit ? Math.min(1, Math.max(0, spentToday / todaysDeposit)) : 0;
 
+  // Live, balance-aware prompt for the spend input (falls back when empty).
+  const spendPlaceholder =
+    balance > 0
+      ? `You have ${formatMoney(balance)} to spend. On what?`
+      : 'How would you like to spend your money?';
+
   // balance "pop" whenever it changes
   const balanceScale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
@@ -358,7 +364,7 @@ export default function MoneyGameScreen() {
                 handleAddItem();
               }
             }}
-            placeholder="How would you like to spend your money?"
+            placeholder={spendPlaceholder}
             placeholderTextColor={colors.textMuted}
             multiline
             blurOnSubmit={false}
