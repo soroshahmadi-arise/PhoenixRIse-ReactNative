@@ -628,6 +628,18 @@ export default function MoneyGameScreen() {
         )}
       </ScrollView>
 
+      {/* ── Done (pinned, returns home) ──────────────────────── */}
+      <View style={[styles.doneWrap, { paddingBottom: insets.bottom + space.md }]}>
+        <PressableScale
+          onPress={goHome}
+          style={[styles.doneBtn, { backgroundColor: theme.buttons.primary.backgroundColor }]}
+          pressedStyle={{ backgroundColor: theme.buttons.primary.pressedBackground }}
+          accessibilityLabel="Done with Prosperity Game"
+        >
+          <Text style={styles.doneBtnText}>Done</Text>
+        </PressableScale>
+      </View>
+
       {/* ── Settings sheet ───────────────────────────────────── */}
       <SettingsSheet
         visible={showSettings}
@@ -1364,6 +1376,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   countPillText: { fontFamily: fonts.bold, fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  /* Done (pinned at the bottom; returns home) */
+  doneWrap: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  doneBtn: {
+    height: theme.buttons.primary.height,
+    borderRadius: theme.buttons.primary.borderRadius,
+    paddingHorizontal: space.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneBtnText: {
+    fontFamily: fonts.semiBold,
+    fontSize: theme.buttons.primary.fontSize,
+    fontWeight: '600',
+    color: theme.buttons.primary.textColor,
+  },
 
   /* Look-back disclosure (trigger inline with chips, card revealed below) */
   historyRow: {
