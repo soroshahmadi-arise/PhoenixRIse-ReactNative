@@ -126,7 +126,6 @@ export default function MoneyGameScreen() {
   const todaysDeposit = depositForDay(day);
   const totalSpent = useMemo(() => totalSpentForItems(items), [items]);
   const balance = balanceFor(totalReceived, totalSpent);
-  const spentToday = useMemo(() => spentForDay(items, day), [items, day]);
 
   // history browsing
   const isViewingToday = viewDay === day;
@@ -149,7 +148,6 @@ export default function MoneyGameScreen() {
   const spendErrorText = amountExceedsBalance
     ? `You only have ${formatMoney(balance)} in the bank.`
     : spendError;
-  const meterPct = todaysDeposit ? Math.min(1, Math.max(0, spentToday / todaysDeposit)) : 0;
 
   // Live, balance-aware prompt for the spend input (falls back when empty).
   const spendPlaceholder =
@@ -381,9 +379,6 @@ export default function MoneyGameScreen() {
             </View>
           </View>
 
-          <View style={styles.meterTrack}>
-            <View style={[styles.meterFill, { width: `${meterPct * 100}%` }]} />
-          </View>
         </View>
 
         {isViewingToday ? (
@@ -1262,14 +1257,6 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
     fontVariant: ['tabular-nums'],
   },
-
-  meterTrack: {
-    height: 6,
-    backgroundColor: colors.meterTrack,
-    borderRadius: radius.pill,
-    overflow: 'hidden',
-  },
-  meterFill: { height: '100%', backgroundColor: colors.sage, borderRadius: radius.pill },
 
   /* Notification */
   notifyOuter: { marginBottom: space.md },
