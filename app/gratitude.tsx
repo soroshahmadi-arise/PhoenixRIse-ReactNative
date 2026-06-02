@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
     opacity: theme.buttons.disabled.opacity,
   },
   addButtonPressed: {
-    backgroundColor: '#9A5731',
+    backgroundColor: theme.colors.highlightPressed,
   },
   addButtonRipple: {
     position: 'absolute',
