@@ -11,11 +11,13 @@ import {
   Easing,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { STORAGE_KEY, type SpendItem } from '@/lib/prosperity';
 
@@ -55,6 +57,8 @@ const isMilestone = (d: number) =>
 /* ──────────────────────────────────────────────────────────── */
 
 export default function MoneyGameScreen() {
+  const insets = useSafeAreaInsets();
+
   // game state
   const [day, setDay] = useState(1);
   const [totalReceived, setTotalReceived] = useState(0);
@@ -224,9 +228,12 @@ export default function MoneyGameScreen() {
   /* ── render ─────────────────────────────────────────────────── */
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       {/* ── Fixed deposit header ─────────────────────────────── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
         <View style={styles.headerRow}>
           <Text style={styles.title}>Prosperity game</Text>
           <Pressable
@@ -312,7 +319,7 @@ export default function MoneyGameScreen() {
       </ScrollView>
 
       {/* ── Sticky composer ──────────────────────────────────── */}
-      <View style={styles.composer}>
+      <View style={[styles.composer, { paddingBottom: insets.bottom + 16 }]}>
         <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
           <TextInput
             value={draftDesc}
@@ -404,7 +411,7 @@ export default function MoneyGameScreen() {
           setShowSettings(false);
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -908,7 +915,6 @@ const styles = StyleSheet.create({
 
   /* Header */
   header: {
-    paddingTop: 60,
     paddingHorizontal: space.lg,
     paddingBottom: 22,
     backgroundColor: colors.surfaceWarm,
@@ -1126,7 +1132,6 @@ const styles = StyleSheet.create({
     borderTopColor: colors.divider,
     paddingHorizontal: space.lg,
     paddingTop: 12,
-    paddingBottom: 28,
     ...Platform.select({
       ios: {
         shadowColor: '#8C4A14',
