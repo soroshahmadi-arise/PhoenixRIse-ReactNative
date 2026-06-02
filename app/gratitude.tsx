@@ -111,11 +111,6 @@ export default function GratitudeScreen() {
     else router.replace('/');
   };
 
-  const handleBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/');
-  };
-
   const sections: Section[] = groupByMonth(items).map((g) => ({
     key: g.key,
     title: g.label,
@@ -133,16 +128,6 @@ export default function GratitudeScreen() {
       >
         <View style={styles.screen}>
           <View style={styles.topRegion}>
-            <Pressable
-              onPress={handleBack}
-              hitSlop={8}
-              style={({ pressed }) => [styles.backLink, pressed && styles.backLinkPressed]}
-              accessibilityRole="link"
-              accessibilityLabel="Go back"
-            >
-              <Text style={styles.backLinkText}>← Back</Text>
-            </Pressable>
-
             <Text style={styles.eyebrow} accessibilityRole="header">
               WHAT ARE YOU GRATEFUL FOR TODAY?
             </Text>
@@ -179,26 +164,25 @@ export default function GratitudeScreen() {
                 style={styles.promptInput}
                 accessibilityLabel="I am grateful for"
               />
-            </View>
 
-            <Pressable
-              onPress={handleAdd}
-              disabled={!canAdd}
-              style={({ pressed }) => [
-                styles.addButton,
-                {
-                  backgroundColor: pressed && canAdd
-                    ? primaryBtn.pressedBackground
-                    : primaryBtn.backgroundColor,
-                },
-                !canAdd && styles.addButtonDisabled,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Add gratitude item"
-              accessibilityState={{ disabled: !canAdd }}
-            >
-              <Text style={styles.addButtonText}>+ Add to list</Text>
-            </Pressable>
+              <View style={styles.composerActions}>
+                <Pressable
+                  onPress={handleAdd}
+                  disabled={!canAdd}
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.addButton,
+                    !canAdd && styles.addButtonDisabled,
+                    pressed && canAdd && styles.addButtonPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add gratitude item"
+                  accessibilityState={{ disabled: !canAdd }}
+                >
+                  <Text style={styles.addButtonIcon}>+</Text>
+                </Pressable>
+              </View>
+            </View>
           </View>
 
           <SectionList
@@ -295,17 +279,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
 
-  backLink: {
-    alignSelf: 'flex-start',
-    paddingVertical: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
-  },
-  backLinkPressed: { opacity: 0.55 },
-  backLinkText: {
-    ...typography.bodyMedium,
-    color: theme.colors.textBody,
-  },
-
   eyebrow: {
     ...typography.micro,
     textTransform: 'uppercase',
@@ -317,10 +290,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.xl,
     borderWidth: 1.5,
     borderColor: theme.colors.border,
-    paddingTop: theme.spacing.lg,
+    paddingTop: theme.spacing.md,
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
+    paddingBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
     ...Platform.select<object>({
       ios: theme.shadows.subtle,
       android: { elevation: 0 },
@@ -345,20 +318,31 @@ const styles = StyleSheet.create({
     }),
   },
 
+  composerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: theme.spacing.sm,
+  },
   addButton: {
-    borderRadius: theme.borderRadius.lg,
-    height: INPUT_HEIGHT,
-    paddingHorizontal: theme.spacing.lg,
+    width: 32,
+    height: 32,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.highlight,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: theme.spacing.xl,
   },
   addButtonDisabled: {
     opacity: theme.buttons.disabled.opacity,
   },
-  addButtonText: {
-    ...typography.button,
-    color: theme.buttons.primary.textColor,
+  addButtonPressed: {
+    backgroundColor: '#9A5731',
+  },
+  addButtonIcon: {
+    color: theme.colors.white,
+    fontFamily: theme.fontFamily.semiBold,
+    fontSize: 20,
+    lineHeight: 22,
+    includeFontPadding: false,
   },
 
   countText: {
