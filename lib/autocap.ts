@@ -37,3 +37,11 @@ export function autoCapitalizeStandaloneI(prev: string, next: string): string {
 export function autoCorrectText(prev: string, next: string): string {
   return autoCapitalizeStandaloneI(prev, autoCapitalize(prev, next));
 }
+
+export function capitalizeVoiceTranscript(text: string): string {
+  if (!text) return text;
+  let result = text[0].toUpperCase() + text.slice(1);
+  result = result.replace(/([.!?]\s+)([a-z])/g, (_, p1, p2) => p1 + p2.toUpperCase());
+  result = result.replace(/(^|[^a-zA-Z])i(?=[\s.,!?;:'"]|$)/g, '$1I');
+  return result;
+}

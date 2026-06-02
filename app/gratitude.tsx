@@ -2,6 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
@@ -14,10 +16,30 @@ import {
   View,
 } from 'react-native';
 
+import Svg, { Path } from 'react-native-svg';
+
 import { Screen } from '@/components/Screen';
-import { autoCorrectText } from '@/lib/autocap';
+import { autoCorrectText, capitalizeVoiceTranscript } from '@/lib/autocap';
 import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { GratitudeItem, formatStamp, groupByMonth } from '@/lib/gratitude';
+
+function MicIcon({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M12 2C10.34 2 9 3.34 9 5v6c0 1.66 1.34 3 3 3s3-1.34 3-3V5c0-1.66-1.34-3-3-3z"
+        fill={color}
+      />
+      <Path
+        d="M19 10v1a7 7 0 01-14 0v-1"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+      <Path d="M12 18v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
 
 const STORAGE_KEY = 'phoenix-rise/gratitude/v1';
 const SAVE_DEBOUNCE_MS = 300;
@@ -29,9 +51,8 @@ if (
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const fadeAnim: Parameters<typeof LayoutAnimation.configureNext>[0] = {
-  duration: 220,
-  create: { type: 'easeInEaseOut', property: 'opacity' },
+const layoutAnim: Parameters<typeof LayoutAnimation.configureNext>[0] = {
+  duration: 240,
   update: { type: 'easeInEaseOut' },
   delete: { type: 'easeInEaseOut', property: 'opacity' },
 };
@@ -43,14 +64,194 @@ type Section = {
   data: GratitudeItem[];
 };
 
+type SpeechRecognitionResultLike = {
+  isFinal: boolean;
+  length: number;
+  0: { transcript: string };
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: { length: number; [index: number]: SpeechRecognitionResultLike };
+};
+
+type SpeechRecognitionInstance = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: unknown) => void) | null;
+  onend: ((event: unknown) => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type ListItemProps = {
+  item: GratitudeItem;
+  isNew: boolean;
+  onRemove: (id: string) => void;
+};
+
+function GratitudeListItemView({ item, isNew, onRemove }: ListItemProps) {
+  const anim = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (!isNew) return;
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 720,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [0, 1, 1],
+    extrapolate: 'clamp',
+  });
+  const translateY = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [10, 0, 0],
+    extrapolate: 'clamp',
+  });
+  const scale = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [0.96, 1, 1],
+    extrapolate: 'clamp',
+  });
+  const borderColor = anim.interpolate({
+    inputRange: [0, 0.55, 1],
+    outputRange: [theme.colors.highlight, theme.colors.highlight, theme.colors.border],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.listItem,
+        {
+          opacity,
+          transform: [{ translateY }, { scale }],
+          borderColor,
+        },
+      ]}
+    >
+      <View style={styles.listItemDot} />
+      <View style={styles.listItemBody}>
+        <Text style={styles.listItemText}>{item.text}</Text>
+        <Text style={styles.listItemStamp}>{formatStamp(item.createdAt)}</Text>
+      </View>
+      <Pressable
+        onPress={() => onRemove(item.id)}
+        hitSlop={8}
+        style={({ pressed }) => [
+          styles.removeButton,
+          pressed && styles.removeButtonPressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${item.text}`}
+      >
+        <Text style={styles.removeButtonText}>×</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export default function GratitudeScreen() {
   const router = useRouter();
   const [items, setItems] = useState<GratitudeItem[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState('');
   const [inputFocused, setInputFocused] = useState(false);
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rippleScale = useRef(new Animated.Value(1)).current;
+  const rippleOpacity = useRef(new Animated.Value(0)).current;
+  const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null);
+  const baseDraftRef = useRef('');
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const SR =
+      (globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .SpeechRecognition ??
+      (globalThis as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .webkitSpeechRecognition;
+    setSpeechSupported(!!SR);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      try {
+        recognitionRef.current?.abort();
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
+  const startListening = () => {
+    if (Platform.OS !== 'web') return;
+    const w = globalThis as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionInstance;
+      webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+    };
+    const SR = w.SpeechRecognition ?? w.webkitSpeechRecognition;
+    if (!SR) return;
+
+    baseDraftRef.current = draft;
+
+    const recognition = new SR();
+    recognition.lang = 'en-US';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: SpeechRecognitionEventLike) => {
+      let transcript = '';
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      const base = baseDraftRef.current;
+      const separator = base && !base.endsWith(' ') ? ' ' : '';
+      const cappedTranscript = capitalizeVoiceTranscript(transcript.trim());
+      setDraft(base + separator + cappedTranscript);
+    };
+
+    recognition.onerror = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+
+    try {
+      recognition.start();
+      recognitionRef.current = recognition;
+      setIsListening(true);
+    } catch {
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleMicTap = () => {
+    if (isListening) stopListening();
+    else startListening();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -88,21 +289,41 @@ export default function GratitudeScreen() {
   const handleAdd = () => {
     const trimmed = draft.trim();
     if (!trimmed) return;
-    LayoutAnimation.configureNext(fadeAnim);
+    if (isListening) stopListening();
+    const newId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    LayoutAnimation.configureNext(layoutAnim);
     setItems((prev) => [
       ...prev,
-      {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        text: trimmed,
-        createdAt: Date.now(),
-      },
+      { id: newId, text: trimmed, createdAt: Date.now() },
     ]);
+    setLastAddedId(newId);
     setDraft('');
     inputRef.current?.focus();
+
+    rippleScale.setValue(1);
+    rippleOpacity.setValue(0.45);
+    Animated.parallel([
+      Animated.timing(rippleScale, {
+        toValue: 2.6,
+        duration: 480,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(rippleOpacity, {
+        toValue: 0,
+        duration: 480,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    setTimeout(() => {
+      setLastAddedId((prev) => (prev === newId ? null : prev));
+    }, 1200);
   };
 
   const handleRemove = (id: string) => {
-    LayoutAnimation.configureNext(fadeAnim);
+    LayoutAnimation.configureNext(layoutAnim);
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
@@ -166,21 +387,51 @@ export default function GratitudeScreen() {
               />
 
               <View style={styles.composerActions}>
-                <Pressable
-                  onPress={handleAdd}
-                  disabled={!canAdd}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.addButton,
-                    !canAdd && styles.addButtonDisabled,
-                    pressed && canAdd && styles.addButtonPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add gratitude item"
-                  accessibilityState={{ disabled: !canAdd }}
-                >
-                  <Text style={styles.addButtonIcon}>+</Text>
-                </Pressable>
+                {speechSupported ? (
+                  <Pressable
+                    onPress={handleMicTap}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.micButton,
+                      isListening && styles.micButtonActive,
+                      pressed && !isListening && styles.micButtonPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={isListening ? 'Stop voice input' : 'Start voice input'}
+                  >
+                    <MicIcon
+                      size={16}
+                      color={isListening ? theme.colors.white : theme.colors.textBody}
+                    />
+                  </Pressable>
+                ) : null}
+                <View style={styles.addButtonWrap}>
+                  <Animated.View
+                    pointerEvents="none"
+                    style={[
+                      styles.addButtonRipple,
+                      {
+                        opacity: rippleOpacity,
+                        transform: [{ scale: rippleScale }],
+                      },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={handleAdd}
+                    disabled={!canAdd}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.addButton,
+                      !canAdd && styles.addButtonDisabled,
+                      pressed && canAdd && styles.addButtonPressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Add gratitude item"
+                    accessibilityState={{ disabled: !canAdd }}
+                  >
+                    <Text style={styles.addButtonIcon}>+</Text>
+                  </Pressable>
+                </View>
               </View>
             </View>
           </View>
@@ -193,13 +444,6 @@ export default function GratitudeScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              items.length > 0 ? (
-                <Text style={styles.countText}>
-                  {items.length} {items.length === 1 ? 'thing' : 'things'} so far
-                </Text>
-              ) : null
-            }
             ListEmptyComponent={
               <View style={styles.emptyState} accessibilityRole="text">
                 <View style={styles.emptyMark}>
@@ -219,25 +463,11 @@ export default function GratitudeScreen() {
               </View>
             )}
             renderItem={({ item }) => (
-              <View style={styles.listItem}>
-                <View style={styles.listItemDot} />
-                <View style={styles.listItemBody}>
-                  <Text style={styles.listItemText}>{item.text}</Text>
-                  <Text style={styles.listItemStamp}>{formatStamp(item.createdAt)}</Text>
-                </View>
-                <Pressable
-                  onPress={() => handleRemove(item.id)}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.removeButton,
-                    pressed && styles.removeButtonPressed,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remove ${item.text}`}
-                >
-                  <Text style={styles.removeButtonText}>×</Text>
-                </Pressable>
-              </View>
+              <GratitudeListItemView
+                item={item}
+                isNew={item.id === lastAddedId}
+                onRemove={handleRemove}
+              />
             )}
             ItemSeparatorComponent={() => <View style={styles.itemSeparator} />}
             SectionSeparatorComponent={({ leadingItem }) =>
@@ -321,7 +551,32 @@ const styles = StyleSheet.create({
   composerActions: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
     marginTop: theme.spacing.sm,
+  },
+  micButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: theme.colors.border,
+  },
+  micButtonActive: {
+    backgroundColor: theme.colors.highlight,
+    borderColor: theme.colors.highlight,
+  },
+  micButtonPressed: {
+    backgroundColor: theme.colors.surfaceNested,
+  },
+  addButtonWrap: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addButton: {
     width: 32,
@@ -337,17 +592,19 @@ const styles = StyleSheet.create({
   addButtonPressed: {
     backgroundColor: '#9A5731',
   },
+  addButtonRipple: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: theme.colors.highlight,
+  },
   addButtonIcon: {
     color: theme.colors.white,
     fontFamily: theme.fontFamily.semiBold,
     fontSize: 20,
     lineHeight: 22,
     includeFontPadding: false,
-  },
-
-  countText: {
-    ...typography.meta,
-    marginBottom: theme.spacing.md,
   },
 
   groupHeader: {
