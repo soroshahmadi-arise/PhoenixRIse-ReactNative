@@ -144,21 +144,20 @@ const styles = StyleSheet.create({
   spacer: { flex: 1 },
 
   ctaButton: {
-    backgroundColor: theme.colors.highlight,
-    height: INPUT_HEIGHT,
-    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.buttons.primary.backgroundColor,
+    height: theme.buttons.primary.height,
+    borderRadius: theme.buttons.primary.borderRadius,
     alignItems: 'center',
     justifyContent: 'center',
   },
   ctaButtonPressed: {
-    backgroundColor: theme.colors.highlightPressed,
+    backgroundColor: theme.buttons.primary.pressedBackground,
   },
   ctaButtonDisabled: {
-    opacity: 0.4,
+    opacity: theme.buttons.disabled.opacity,
   },
   ctaText: {
     ...typography.button,
-    fontSize: theme.fontSize.lg,
-    color: theme.colors.white,
+    color: theme.buttons.primary.textColor,
   },
 });
