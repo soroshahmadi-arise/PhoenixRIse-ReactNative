@@ -9,8 +9,10 @@ import {
   Modal,
   Animated,
   Easing,
+  LayoutAnimation,
   StyleSheet,
   Platform,
+  UIManager,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
@@ -55,6 +57,19 @@ import { useReducedMotion } from '@/lib/useReducedMotion';
 /* ──────────────────────────────────────────────────────────── */
 
 const SAVE_DEBOUNCE_MS = 300;
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const spendLayoutAnim: Parameters<typeof LayoutAnimation.configureNext>[0] = {
+  duration: 240,
+  update: { type: 'easeInEaseOut' },
+  delete: { type: 'easeInEaseOut', property: 'opacity' },
+};
 
 type ResetSnapshot = {
   day: number;
@@ -107,6 +122,8 @@ export default function MoneyGameScreen() {
   const [viewDay, setViewDay] = useState(1);
   // collapsed-by-default "Looking back" summary
   const [showLookBack, setShowLookBack] = useState(false);
+  // most-recently-added spend id — drives the entrance animation
+  const [lastAddedId, setLastAddedId] = useState<string | null>(null);
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -222,21 +239,27 @@ export default function MoneyGameScreen() {
       return;
     }
     if (!canAdd) return;
+    const newId = uid();
+    LayoutAnimation.configureNext(spendLayoutAnim);
     setItems((prev) => [
       ...prev,
       {
-        id: uid(),
+        id: newId,
         description: draftDesc.trim(),
         amount: parsedAmount,
         image: draftImage,
         day,
       },
     ]);
+    setLastAddedId(newId);
     setDraftDesc('');
     setDraftAmount('');
     setDraftImage(null);
     setSpendError('');
-    requestAnimationFrame(() => scrollRef.current?.scrollTo({ y: 0, animated: true }));
+    // clear the "new" flag after the animation has played out
+    setTimeout(() => {
+      setLastAddedId((prev) => (prev === newId ? null : prev));
+    }, 1200);
   };
 
   const handlePickImage = async () => {
@@ -249,8 +272,10 @@ export default function MoneyGameScreen() {
     }
   };
 
-  const handleRemoveItem = (id: string) =>
+  const handleRemoveItem = (id: string) => {
+    LayoutAnimation.configureNext(spendLayoutAnim);
     setItems((prev) => prev.filter((it) => it.id !== id));
+  };
 
   const handleUseBalance = () => {
     if (balance > 0) {
@@ -301,8 +326,18 @@ export default function MoneyGameScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* ── Fixed deposit header ─────────────────────────────── */}
-      <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+      {/* ── Everything scrolls (header included, no longer pinned) ─── */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.list}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingTop: insets.top + 20, paddingBottom: space.xl },
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        showsVerticalScrollIndicator={false}
+      >
         <ScreenHeader
           title="Prosperity Game"
           onBack={goHome}
@@ -361,30 +396,6 @@ export default function MoneyGameScreen() {
           </View>
         </View>
 
-        <PressableScale
-          onPress={handleAdvanceDay}
-          disabled={!accepted}
-          style={styles.completeBtn}
-          pressedStyle={styles.completeBtnPressed}
-          disabledStyle={styles.completeBtnDisabled}
-          accessibilityLabel={accepted ? `Complete day ${day}` : 'Accept deposit before completing the day'}
-        >
-          <Text style={styles.completeBtnText}>
-            {accepted ? `Complete Day ${day}` : 'Accept Deposit First'}
-          </Text>
-          <Text style={styles.completeBtnArrow}>{accepted ? '→' : ''}</Text>
-        </PressableScale>
-      </View>
-
-      {/* ── Scrolling list ───────────────────────────────────── */}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.list}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + space.xl }]}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        showsVerticalScrollIndicator={false}
-      >
         {day > 1 && (
           <View style={styles.historyRow}>
             <Pressable
@@ -621,6 +632,7 @@ export default function MoneyGameScreen() {
               <SpendRow
                 key={it.id}
                 item={it}
+                isNew={it.id === lastAddedId}
                 onRemove={isViewingToday ? () => handleRemoveItem(it.id) : undefined}
               />
             ))}
@@ -628,8 +640,20 @@ export default function MoneyGameScreen() {
         )}
       </ScrollView>
 
-      {/* ── Done (pinned, returns home) ──────────────────────── */}
-      <View style={[styles.doneWrap, { paddingBottom: insets.bottom + space.md }]}>
+      {/* ── Bottom action row: Skip to Day X · Done ───────────── */}
+      <View style={[styles.bottomBar, { paddingBottom: insets.bottom + space.md }]}>
+        <PressableScale
+          onPress={handleAdvanceDay}
+          disabled={!accepted}
+          style={styles.skipBtn}
+          pressedStyle={{ backgroundColor: theme.buttons.secondary.pressedBackground }}
+          disabledStyle={styles.skipBtnDisabled}
+          accessibilityLabel={
+            accepted ? `Skip to day ${day + 1}` : 'Accept the deposit before advancing the day'
+          }
+        >
+          <Text style={styles.skipBtnText}>Skip to Day {day + 1}</Text>
+        </PressableScale>
         <PressableScale
           onPress={goHome}
           style={[styles.doneBtn, { backgroundColor: theme.buttons.primary.backgroundColor }]}
@@ -812,9 +836,65 @@ function DepositNotification({
 /* Spend row                                                     */
 /* ──────────────────────────────────────────────────────────── */
 
-function SpendRow({ item, onRemove }: { item: SpendItem; onRemove?: () => void }) {
+function SpendRow({
+  item,
+  isNew = false,
+  onRemove,
+}: {
+  item: SpendItem;
+  isNew?: boolean;
+  onRemove?: () => void;
+}) {
+  const reduceMotion = useReducedMotion();
+  const anim = useRef(new Animated.Value(isNew ? 0 : 1)).current;
+
+  useEffect(() => {
+    if (!isNew) return;
+    if (reduceMotion) {
+      anim.setValue(1);
+      return;
+    }
+    Animated.timing(anim, {
+      toValue: 1,
+      duration: 720,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+    // run once on mount when this row is the newly-added entry
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [0, 1, 1],
+    extrapolate: 'clamp',
+  });
+  const translateY = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [10, 0, 0],
+    extrapolate: 'clamp',
+  });
+  const scale = anim.interpolate({
+    inputRange: [0, 0.44, 1],
+    outputRange: [0.96, 1, 1],
+    extrapolate: 'clamp',
+  });
+  const borderColor = anim.interpolate({
+    inputRange: [0, 0.55, 1],
+    outputRange: [colors.accent, colors.accent, colors.secondaryBorder],
+  });
+
   return (
-    <View style={styles.row}>
+    <Animated.View
+      style={[
+        styles.row,
+        {
+          opacity,
+          transform: [{ translateY }, { scale }],
+          borderColor,
+        },
+      ]}
+    >
       <View style={styles.rowTile}>
         {item.image ? (
           <Image source={{ uri: item.image }} style={styles.rowTileImg} />
@@ -841,7 +921,7 @@ function SpendRow({ item, onRemove }: { item: SpendItem; onRemove?: () => void }
           <X size={16} color={colors.textMuted} />
         </Pressable>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
@@ -1171,14 +1251,7 @@ const noOutline = Platform.select({ web: { outlineStyle: 'none' as any }, defaul
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
 
-  /* Header */
-  header: {
-    paddingHorizontal: space.lg,
-    paddingBottom: space.md,
-    backgroundColor: colors.surfaceWarm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
+  /* Header (unpinned — scrolls with the rest of the content) */
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1223,6 +1296,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     paddingHorizontal: space.md,
     paddingVertical: space.md,
+    marginBottom: space.md,
     ...Platform.select({
       ios: {
         shadowColor: '#593B2E',
@@ -1284,40 +1358,6 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
 
-  completeBtn: {
-    marginTop: space.md,
-    width: '100%',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: radius.pill,
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    ...Platform.select({
-      ios: {
-        shadowColor: colors.primary,
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
-      },
-      android: { elevation: 3 },
-      default: { boxShadow: '0 4px 12px rgba(92,72,60,0.20)' as any },
-    }),
-  },
-  completeBtnPressed: { backgroundColor: colors.primaryPressed },
-  completeBtnDisabled: {
-    backgroundColor: colors.disabled,
-    ...Platform.select({
-      ios: { shadowOpacity: 0 },
-      android: { elevation: 0 },
-      default: { boxShadow: 'none' as any },
-    }),
-  },
-  completeBtnText: { fontFamily: fonts.semiBold, fontSize: 14, fontWeight: '600', color: colors.primaryText },
-  completeBtnArrow: { fontSize: 15, lineHeight: 15, color: 'rgba(253,251,250,0.7)' },
-
   /* Notification */
   notifyOuter: { marginBottom: space.md },
   notifyCard: {
@@ -1377,23 +1417,46 @@ const styles = StyleSheet.create({
   },
   countPillText: { fontFamily: fonts.bold, fontSize: 11, fontWeight: '700', color: '#fff' },
 
-  /* Done (pinned at the bottom; returns home) */
-  doneWrap: {
+  /* Bottom action row (Skip to Day X + Done) — pinned, small inline buttons */
+  bottomBar: {
+    flexDirection: 'row',
+    gap: space.sm,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
-  doneBtn: {
-    height: theme.buttons.primary.height,
+  skipBtn: {
+    flex: 1,
+    height: 44,
     borderRadius: theme.buttons.primary.borderRadius,
-    paddingHorizontal: space.lg,
+    paddingHorizontal: space.md,
+    borderWidth: 1.5,
+    borderColor: colors.secondaryBorder,
+    backgroundColor: theme.buttons.secondary.backgroundColor,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skipBtnDisabled: {
+    opacity: 0.45,
+  },
+  skipBtnText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
+    fontWeight: '600',
+    color: theme.buttons.secondary.textColor,
+  },
+  doneBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: theme.buttons.primary.borderRadius,
+    paddingHorizontal: space.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   doneBtnText: {
     fontFamily: fonts.semiBold,
-    fontSize: theme.buttons.primary.fontSize,
+    fontSize: 13,
     fontWeight: '600',
     color: theme.buttons.primary.textColor,
   },
