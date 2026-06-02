@@ -20,10 +20,9 @@ import { NAME_KEY } from '@/lib/user';
 export default function OnboardingScreen() {
   const router = useRouter();
   const [name, setName] = useState('');
-  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const greeting = timeOfDayGreeting();
-  const canBegin = name.trim().length > 0 && ageConfirmed;
+  const canBegin = name.trim().length > 0;
 
   const handleBegin = async () => {
     if (!canBegin) return;
@@ -44,7 +43,7 @@ export default function OnboardingScreen() {
             </View>
 
             <Text style={styles.headline}>{greeting}</Text>
-            <Text style={styles.subtext}>A couple of things before we begin.</Text>
+            <Text style={styles.subtext}>One thing before we begin.</Text>
           </View>
 
           <View style={styles.form}>
@@ -58,22 +57,6 @@ export default function OnboardingScreen() {
               returnKeyType="done"
               accessibilityLabel="Your name"
             />
-
-            <Pressable
-              onPress={() => setAgeConfirmed(!ageConfirmed)}
-              style={({ pressed }) => [
-                styles.checkboxRow,
-                pressed && styles.checkboxRowPressed,
-              ]}
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: ageConfirmed }}
-              accessibilityLabel="I am 18 years of age or older"
-            >
-              <View style={[styles.checkbox, ageConfirmed && styles.checkboxChecked]}>
-                {ageConfirmed && <Text style={styles.checkmark}>✓</Text>}
-              </View>
-              <Text style={styles.checkboxLabel}>I am 18 years of age or older</Text>
-            </Pressable>
           </View>
 
           <View style={styles.spacer} />
@@ -160,39 +143,6 @@ const styles = StyleSheet.create({
     }),
   },
 
-  checkboxRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.md,
-    paddingVertical: theme.spacing.xs,
-  },
-  checkboxRowPressed: { opacity: 0.7 },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.white,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkboxChecked: {
-    backgroundColor: theme.colors.highlight,
-    borderColor: theme.colors.highlight,
-  },
-  checkmark: {
-    color: theme.colors.white,
-    fontSize: 14,
-    fontFamily: theme.fontFamily.bold,
-    lineHeight: 16,
-  },
-  checkboxLabel: {
-    ...typography.bodyMedium,
-    color: theme.colors.text,
-    flex: 1,
-  },
-
   spacer: { flex: 1 },
 
   ctaButton: {
@@ -203,7 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaButtonPressed: {
-    backgroundColor: '#9A5731',
+    backgroundColor: theme.colors.highlightPressed,
   },
   ctaButtonDisabled: {
     opacity: 0.4,

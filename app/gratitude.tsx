@@ -8,6 +8,7 @@ import {
   LayoutAnimation,
   Platform,
   Pressable,
+  ScrollView,
   SectionList,
   StyleSheet,
   Text,
@@ -174,6 +175,7 @@ export default function GratitudeScreen() {
   const rippleOpacity = useRef(new Animated.Value(0)).current;
   const recognitionRef = useRef<{ stop: () => void; abort: () => void } | null>(null);
   const baseDraftRef = useRef('');
+  const sectionListRef = useRef<SectionList<GratitudeItem, Section>>(null);
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
@@ -339,6 +341,30 @@ export default function GratitudeScreen() {
     data: g.items,
   }));
 
+  const currentYear = new Date().getFullYear();
+  const monthChips = sections.map((s) => {
+    const first = s.data[0];
+    const d = new Date(first.createdAt);
+    const monthAbbr = d.toLocaleString('en-US', { month: 'short' });
+    return {
+      key: s.key,
+      label: d.getFullYear() === currentYear ? monthAbbr : `${monthAbbr} ${d.getFullYear()}`,
+    };
+  });
+
+  const handleChipPress = (sectionIndex: number) => {
+    try {
+      sectionListRef.current?.scrollToLocation({
+        sectionIndex,
+        itemIndex: 0,
+        animated: true,
+        viewPosition: 0,
+      });
+    } catch {
+      // scrollToLocation can throw before items are measured; safe to ignore
+    }
+  };
+
   const primaryBtn = theme.buttons.primary;
 
   return (
@@ -437,6 +463,7 @@ export default function GratitudeScreen() {
           </View>
 
           <SectionList
+            ref={sectionListRef}
             sections={sections}
             keyExtractor={(item) => item.id}
             stickySectionHeadersEnabled
@@ -456,12 +483,47 @@ export default function GratitudeScreen() {
                 </Text>
               </View>
             }
-            renderSectionHeader={({ section }) => (
-              <View style={styles.groupHeader}>
-                <Text style={styles.groupHeaderTitle}>{(section as Section).title}</Text>
-                <Text style={styles.groupHeaderCount}>{(section as Section).count}</Text>
-              </View>
-            )}
+            renderSectionHeader={({ section }) => {
+              const currentKey = (section as Section).key;
+              return (
+                <View style={styles.groupHeader}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.headerChipsScroll}
+                    contentContainerStyle={styles.headerChipsRow}
+                  >
+                    {monthChips.map((chip, idx) => {
+                      const isActive = chip.key === currentKey;
+                      return (
+                        <Pressable
+                          key={chip.key}
+                          onPress={() => handleChipPress(idx)}
+                          style={({ pressed }) => [
+                            styles.headerChip,
+                            isActive && styles.headerChipActive,
+                            pressed && !isActive && styles.chipPressed,
+                          ]}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Jump to ${chip.label}`}
+                          accessibilityState={{ selected: isActive }}
+                        >
+                          <Text
+                            style={[
+                              styles.headerChipText,
+                              isActive && styles.headerChipTextActive,
+                            ]}
+                          >
+                            {chip.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </ScrollView>
+                  <Text style={styles.groupHeaderCount}>{(section as Section).count}</Text>
+                </View>
+              );
+            }}
             renderItem={({ item }) => (
               <GratitudeListItemView
                 item={item}
@@ -590,7 +652,7 @@ const styles = StyleSheet.create({
     opacity: theme.buttons.disabled.opacity,
   },
   addButtonPressed: {
-    backgroundColor: '#9A5731',
+    backgroundColor: theme.colors.highlightPressed,
   },
   addButtonRipple: {
     position: 'absolute',
@@ -607,6 +669,41 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
   },
 
+  headerChipsScroll: {
+    flex: 1,
+    minWidth: 0,
+  },
+  headerChipsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs + 2,
+    paddingRight: theme.spacing.sm,
+  },
+  headerChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: theme.borderRadius.full,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: 'transparent',
+  },
+  headerChipActive: {
+    backgroundColor: theme.colors.highlight,
+    borderColor: theme.colors.highlight,
+  },
+  chipPressed: {
+    backgroundColor: theme.colors.surfaceNested,
+  },
+  headerChipText: {
+    fontFamily: theme.fontFamily.medium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: theme.colors.textBody,
+  },
+  headerChipTextActive: {
+    color: theme.colors.white,
+  },
+
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -616,10 +713,6 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm + 2,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
-  },
-  groupHeaderTitle: {
-    ...typography.headline3,
-    color: theme.colors.highlight,
   },
   groupHeaderCount: {
     ...typography.meta,
