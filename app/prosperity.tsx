@@ -13,20 +13,35 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
-import Svg, { Path, Rect, Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CaretLeft } from '@/components/Icon';
-import { PressableScale } from '@/components/PressableScale';
 import {
+  ArrowCounterClockwise,
+  Banknote,
+  Gear,
+  Image as ImageIcon,
+  Plus,
+  Sparkle,
+  X,
+} from '@/components/Icon';
+import { PressableScale } from '@/components/PressableScale';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import {
+  acceptDeposit as acceptDepositState,
+  balanceFor,
+  completeDay as completeDayState,
   depositForDay,
   formatMoney,
+  itemsForDay,
   isMilestoneDay,
+  remainingForDay,
+  spentForDay,
   STORAGE_KEY,
+  totalSpentForItems,
   type SpendItem,
 } from '@/lib/prosperity';
 import { theme } from '@/lib/constants';
@@ -89,17 +104,11 @@ export default function MoneyGameScreen() {
 
   // derived
   const todaysDeposit = depositForDay(day);
-  const totalSpent = useMemo(
-    () => items.reduce((s, it) => s + it.amount, 0),
-    [items],
-  );
-  const balance = totalReceived - totalSpent;
-  const todaysItems = useMemo(
-    () => items.filter((it) => it.day === day),
-    [items, day],
-  );
-  const spentToday = todaysItems.reduce((s, it) => s + it.amount, 0);
-  const remainingToday = todaysDeposit - spentToday;
+  const totalSpent = useMemo(() => totalSpentForItems(items), [items]);
+  const balance = balanceFor(totalReceived, totalSpent);
+  const todaysItems = useMemo(() => itemsForDay(items, day), [items, day]);
+  const spentToday = useMemo(() => spentForDay(items, day), [items, day]);
+  const remainingToday = remainingForDay(day, spentToday);
   const parsedAmount = parseInt((draftAmount || '').replace(/[^0-9]/g, ''), 10) || 0;
   const canAdd = draftDesc.trim().length > 0 && parsedAmount > 0;
   const meterPct = todaysDeposit ? Math.min(1, Math.max(0, spentToday / todaysDeposit)) : 0;
@@ -213,14 +222,16 @@ export default function MoneyGameScreen() {
   };
 
   const acceptDeposit = () => {
-    setAccepted(true);
-    setTotalReceived((prev) => prev + todaysDeposit);
+    const next = acceptDepositState({ day, totalReceived, items, accepted });
+    setAccepted(next.accepted);
+    setTotalReceived(next.totalReceived);
   };
 
   const handleAdvanceDay = () => {
     if (!accepted) return;
-    setDay((d) => d + 1);
-    setAccepted(false);
+    const next = completeDayState({ day, totalReceived, items, accepted });
+    setDay(next.day);
+    setAccepted(next.accepted);
     setDraftDesc('');
     setDraftAmount('');
     setDraftImage(null);
@@ -253,31 +264,26 @@ export default function MoneyGameScreen() {
     >
       {/* ── Fixed deposit header ─────────────────────────────── */}
       <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
-        <View style={styles.headerRow}>
-          <View style={styles.headerLeft}>
+        <ScreenHeader
+          title="Prosperity Game"
+          onBack={goHome}
+          style={styles.headerRow}
+          leftStyle={styles.headerLeft}
+          backButtonStyle={styles.backBtn}
+          titleStyle={styles.title}
+          iconColor={colors.textPrimary}
+          rightAccessory={
             <Pressable
-              onPress={goHome}
-              style={styles.backBtn}
+              onPress={() => setShowSettings(true)}
+              style={styles.gearBtn}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Back to home"
+              accessibilityLabel="Adjust your game"
             >
-              <CaretLeft size={22} color={colors.textPrimary} />
+              <Gear size={20} color={colors.textMuted} />
             </Pressable>
-            <Text style={styles.title} accessibilityRole="header">
-              Prosperity Game
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => setShowSettings(true)}
-            style={styles.gearBtn}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Adjust your game"
-          >
-            <GearIcon color={colors.textMuted} />
-          </Pressable>
-        </View>
+          }
+        />
 
         {!accepted && (
           <DepositNotification
@@ -397,7 +403,7 @@ export default function MoneyGameScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Remove picture"
               >
-                <Text style={styles.thumbRemoveText}>×</Text>
+                <X size={14} color={colors.primaryText} />
               </Pressable>
             </View>
           )}
@@ -430,7 +436,7 @@ export default function MoneyGameScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Add a picture"
               >
-                <ImageIcon color={colors.sageDark} />
+                <ImageIcon size={18} color={colors.sageDark} />
               </Pressable>
               {remainingToday > 0 && (
                 <Pressable
@@ -452,7 +458,7 @@ export default function MoneyGameScreen() {
               disabledStyle={styles.addBtnDisabled}
               accessibilityLabel="Add to today's list"
             >
-              <Text style={styles.addBtnText}>＋</Text>
+              <Plus size={20} color={colors.primaryText} />
             </PressableScale>
           </View>
         </View>
@@ -596,7 +602,7 @@ function DepositNotification({
             { backgroundColor: t.badgeBg, borderColor: t.badgeBorder, transform: [{ translateY: floatY }] },
           ]}
         >
-          <BanknoteIcon color={t.badgeIcon} />
+          <Banknote size={22} color={t.badgeIcon} />
         </Animated.View>
 
         {/* text */}
@@ -634,7 +640,9 @@ function SpendRow({ item, onRemove }: { item: SpendItem; onRemove: () => void })
         {item.image ? (
           <Image source={{ uri: item.image }} style={styles.rowTileImg} />
         ) : (
-          <SparkleIcon size={20} color={colors.sageDark} opacity={0.6} />
+          <View style={{ opacity: 0.6 }}>
+            <Sparkle size={20} color={colors.sageDark} />
+          </View>
         )}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
@@ -650,7 +658,7 @@ function SpendRow({ item, onRemove }: { item: SpendItem; onRemove: () => void })
         accessibilityRole="button"
         accessibilityLabel={`Remove ${item.description}`}
       >
-        <Text style={styles.removeBtnText}>×</Text>
+        <X size={16} color={colors.textMuted} />
       </Pressable>
     </View>
   );
@@ -664,15 +672,15 @@ function EmptyState({ dayDeposit }: { dayDeposit: number }) {
   return (
     <View style={styles.empty}>
       <View style={styles.emptyGlyph}>
-        <SparkleIcon size={40} color={colors.sage} />
+        <Sparkle size={40} color={colors.sage} />
         <View style={styles.emptySparkTR}>
           <Twinkle duration={2200}>
-            <SparkleIcon size={13} color={colors.sage} />
+            <Sparkle size={13} color={colors.sage} />
           </Twinkle>
         </View>
         <View style={styles.emptySparkBL}>
           <Twinkle duration={1700} delay={400}>
-            <SparkleIcon size={9} color={colors.sage} />
+            <Sparkle size={9} color={colors.sage} />
           </Twinkle>
         </View>
       </View>
@@ -764,7 +772,7 @@ function SettingsSheet({
               accessibilityRole="button"
               accessibilityLabel="Close settings"
             >
-              <Text style={styles.sheetClose}>×</Text>
+              <X size={20} color={colors.textMuted} />
             </Pressable>
           </View>
 
@@ -805,7 +813,7 @@ function SettingsSheet({
                 onPress={handleUndo}
                 style={({ pressed }) => [styles.undoBtn, pressed && { opacity: 0.7 }]}
               >
-                <UndoIcon color={colors.sageDark} />
+                <ArrowCounterClockwise size={15} color={colors.sageDark} />
                 <Text style={styles.undoBtnText}>Undo reset</Text>
               </Pressable>
             ) : (
@@ -878,59 +886,6 @@ function Twinkle({
   const opacity = v.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
   const scale = v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] });
   return <Animated.View style={{ opacity, transform: [{ scale }] }}>{children}</Animated.View>;
-}
-
-/* ──────────────────────────────────────────────────────────── */
-/* Icons (react-native-svg)                                      */
-/* ──────────────────────────────────────────────────────────── */
-
-const SPARKLE_PATH =
-  'M12 0 L14.2 9.8 L24 12 L14.2 14.2 L12 24 L9.8 14.2 L0 12 L9.8 9.8 Z';
-
-function SparkleIcon({ size, color, opacity = 1 }: { size: number; color: string; opacity?: number }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24">
-      <Path d={SPARKLE_PATH} fill={color} opacity={opacity} />
-    </Svg>
-  );
-}
-
-function BanknoteIcon({ color }: { color: string }) {
-  return (
-    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <Rect x={2} y={6} width={20} height={12} rx={2} />
-      <Circle cx={12} cy={12} r={2} />
-      <Path d="M6 12h.01M18 12h.01" />
-    </Svg>
-  );
-}
-
-function ImageIcon({ color }: { color: string }) {
-  return (
-    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Rect x={3} y={3} width={18} height={18} rx={2} />
-      <Circle cx={8.5} cy={8.5} r={1.5} />
-      <Path d="M21 15l-5-5L5 21" />
-    </Svg>
-  );
-}
-
-function GearIcon({ color }: { color: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-      <Circle cx={12} cy={12} r={3} />
-      <Path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-    </Svg>
-  );
-}
-
-function UndoIcon({ color }: { color: string }) {
-  return (
-    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M9 14L4 9l5-5" />
-      <Path d="M4 9h11a4 4 0 0 1 0 8h-1" />
-    </Svg>
-  );
 }
 
 /* ──────────────────────────────────────────────────────────── */
@@ -1228,7 +1183,6 @@ const styles = StyleSheet.create({
   },
   rowChipText: { fontFamily: fonts.serif, fontSize: 13, fontWeight: '600', color: colors.sageDark },
   removeBtn: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
-  removeBtnText: { fontSize: 20, lineHeight: 20, color: colors.textMuted },
 
   /* Empty state */
   empty: {
@@ -1303,7 +1257,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  thumbRemoveText: { color: '#fff', fontSize: 14, lineHeight: 16 },
 
   composerActions: {
     flexDirection: 'row',
@@ -1345,7 +1298,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   addBtnDisabled: { backgroundColor: colors.disabled },
-  addBtnText: { color: colors.primaryText, fontSize: 22, lineHeight: 24 },
 
   /* Settings sheet */
   sheetRoot: {

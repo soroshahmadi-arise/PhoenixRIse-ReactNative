@@ -17,33 +17,14 @@ import {
   View,
 } from 'react-native';
 
-import Svg, { Path } from 'react-native-svg';
-
-import { CaretLeft } from '@/components/Icon';
+import { Microphone, Plus, X } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { Screen } from '@/components/Screen';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { autoCorrectText, capitalizeVoiceTranscript } from '@/lib/autocap';
 import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { GratitudeItem, formatStamp, groupByMonth } from '@/lib/gratitude';
 import { useReducedMotion } from '@/lib/useReducedMotion';
-
-function MicIcon({ size, color }: { size: number; color: string }) {
-  return (
-    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <Path
-        d="M12 2C10.34 2 9 3.34 9 5v6c0 1.66 1.34 3 3 3s3-1.34 3-3V5c0-1.66-1.34-3-3-3z"
-        fill={color}
-      />
-      <Path
-        d="M19 10v1a7 7 0 01-14 0v-1"
-        stroke={color}
-        strokeWidth={2}
-        strokeLinecap="round"
-      />
-      <Path d="M12 18v3" stroke={color} strokeWidth={2} strokeLinecap="round" />
-    </Svg>
-  );
-}
 
 const STORAGE_KEY = 'phoenix-rise/gratitude/v1';
 const SAVE_DEBOUNCE_MS = 300;
@@ -162,7 +143,7 @@ function GratitudeListItemView({ item, isNew, onRemove }: ListItemProps) {
         accessibilityRole="button"
         accessibilityLabel={`Remove ${item.text}`}
       >
-        <Text style={styles.removeButtonText}>×</Text>
+        <X size={18} color={theme.colors.textLight} />
       </Pressable>
     </Animated.View>
   );
@@ -391,23 +372,13 @@ export default function GratitudeScreen() {
       >
         <View style={styles.screen}>
           <View style={styles.topRegion}>
-            <View style={styles.headerRow}>
-              <Pressable
-                onPress={goHome}
-                hitSlop={10}
-                style={({ pressed }) => [
-                  styles.backBtn,
-                  pressed && styles.backBtnPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Back to home"
-              >
-                <CaretLeft size={22} color={theme.colors.text} />
-              </Pressable>
-              <Text style={styles.title} accessibilityRole="header">
-                Gratitude List
-              </Text>
-            </View>
+            <ScreenHeader
+              title="Gratitude List"
+              onBack={goHome}
+              style={styles.headerRow}
+              titleStyle={styles.title}
+              iconColor={theme.colors.text}
+            />
 
             <Text style={styles.eyebrow}>WHAT ARE YOU GRATEFUL FOR TODAY?</Text>
 
@@ -457,7 +428,7 @@ export default function GratitudeScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={isListening ? 'Stop voice input' : 'Start voice input'}
                   >
-                    <MicIcon
+                    <Microphone
                       size={16}
                       color={isListening ? theme.colors.white : theme.colors.textBody}
                     />
@@ -482,7 +453,7 @@ export default function GratitudeScreen() {
                     disabledStyle={styles.addButtonDisabled}
                     accessibilityLabel="Add gratitude item"
                   >
-                    <Text style={styles.addButtonIcon}>+</Text>
+                    <Plus size={18} color={theme.colors.white} />
                   </PressableScale>
                 </View>
               </View>
@@ -609,17 +580,6 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
     marginBottom: theme.spacing.sm,
   },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -10,
-  },
-  backBtnPressed: {
-    backgroundColor: theme.colors.surfaceNested,
-  },
   title: {
     fontFamily: theme.fontFamily.serifSemiBold,
     fontSize: 25,
@@ -718,14 +678,6 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.highlight,
     pointerEvents: 'none',
   },
-  addButtonIcon: {
-    color: theme.colors.white,
-    fontFamily: theme.fontFamily.semiBold,
-    fontSize: 20,
-    lineHeight: 22,
-    includeFontPadding: false,
-  },
-
   headerChipsScroll: {
     flex: 1,
     minWidth: 0,
@@ -864,13 +816,6 @@ const styles = StyleSheet.create({
   removeButtonPressed: {
     backgroundColor: theme.colors.warmOverlay,
   },
-  removeButtonText: {
-    fontSize: 22,
-    lineHeight: 24,
-    color: theme.colors.textLight,
-    fontFamily: theme.fontFamily.regular,
-  },
-
   ctaWrap: {
     paddingTop: theme.spacing.md,
     marginTop: theme.spacing.sm,

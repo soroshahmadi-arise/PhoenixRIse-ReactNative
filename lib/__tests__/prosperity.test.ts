@@ -1,4 +1,23 @@
-import { depositForDay, formatMoney, isMilestoneDay } from '../prosperity';
+import {
+  acceptDeposit,
+  balanceFor,
+  completeDay,
+  depositForDay,
+  formatMoney,
+  itemsForDay,
+  isMilestoneDay,
+  remainingForDay,
+  spentForDay,
+  totalSpentForItems,
+  type ProsperityState,
+  type SpendItem,
+} from '../prosperity';
+
+const items: SpendItem[] = [
+  { id: 'a', description: 'Retreat', amount: 600, day: 1 },
+  { id: 'b', description: 'Books', amount: 120, day: 1 },
+  { id: 'c', description: 'Trip', amount: 2000, day: 2 },
+];
 
 describe('depositForDay', () => {
   it('returns $1,000 times the day number', () => {
@@ -33,5 +52,45 @@ describe('isMilestoneDay', () => {
     expect(isMilestoneDay(24)).toBe(false);
     expect(isMilestoneDay(0)).toBe(false);
     expect(isMilestoneDay(-25)).toBe(false);
+  });
+});
+
+describe('spending calculations', () => {
+  it('sums all spending and filters spending for a specific day', () => {
+    expect(totalSpentForItems(items)).toBe(2720);
+    expect(itemsForDay(items, 1)).toEqual([items[0], items[1]]);
+    expect(spentForDay(items, 1)).toBe(720);
+    expect(spentForDay(items, 3)).toBe(0);
+  });
+
+  it('calculates balance and the remaining amount for a day', () => {
+    expect(balanceFor(3000, totalSpentForItems(items))).toBe(280);
+    expect(remainingForDay(1, spentForDay(items, 1))).toBe(280);
+    expect(remainingForDay(2, spentForDay(items, 2))).toBe(0);
+  });
+});
+
+describe('game flow transitions', () => {
+  const baseState: ProsperityState = {
+    day: 2,
+    totalReceived: 1000,
+    items,
+    accepted: false,
+  };
+
+  it('accepts the current day deposit once', () => {
+    const accepted = acceptDeposit(baseState);
+
+    expect(accepted.accepted).toBe(true);
+    expect(accepted.totalReceived).toBe(3000);
+    expect(acceptDeposit(accepted)).toBe(accepted);
+  });
+
+  it('only completes a day after the deposit is accepted', () => {
+    expect(completeDay(baseState)).toBe(baseState);
+
+    const completed = completeDay({ ...baseState, accepted: true });
+    expect(completed.day).toBe(3);
+    expect(completed.accepted).toBe(false);
   });
 });
