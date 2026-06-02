@@ -5,9 +5,29 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AppName, INPUT_HEIGHT, theme, typography } from '@/lib/constants';
+import { EmberOrb } from '@/components/EmberOrb';
+import { AppName, theme, typography } from '@/lib/constants';
 import { timeOfDayGreeting } from '@/lib/greeting';
 import { NAME_KEY } from '@/lib/user';
+
+type TileProps = {
+  title: string;
+  onPress: () => void;
+};
+
+function Tile({ title, onPress }: TileProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
+    >
+      <View style={styles.tileDot} />
+      <Text style={styles.tileTitle}>{title}</Text>
+    </Pressable>
+  );
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -35,13 +55,7 @@ export default function HomeScreen() {
     return userName ? `${base}, ${userName}` : base;
   }, [userName]);
 
-  const handleGratitude = () => {
-    router.push('/gratitude');
-  };
-
   if (!ready) return <View style={styles.root} />;
-
-  const primaryBtn = theme.buttons.primary;
 
   return (
     <View style={styles.root}>
@@ -62,28 +76,13 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>{greetingText}</Text>
           </View>
 
-          <View style={styles.hero}>
-            <Text style={styles.headline}>
-              Begin as the version of you who already rose.
-            </Text>
+          <View style={styles.orbZone}>
+            <EmberOrb size={140} instanceId="home" />
           </View>
 
-          <View style={styles.cta}>
-            <Pressable
-              onPress={handleGratitude}
-              accessibilityRole="button"
-              accessibilityLabel="Open gratitude list"
-              style={({ pressed }) => [
-                styles.primaryButton,
-                {
-                  backgroundColor: pressed
-                    ? primaryBtn.pressedBackground
-                    : primaryBtn.backgroundColor,
-                },
-              ]}
-            >
-              <Text style={styles.primaryButtonText}>Gratitude List</Text>
-            </Pressable>
+          <View style={styles.tilesWrap}>
+            <Tile title="Gratitude List" onPress={() => router.push('/gratitude')} />
+            <Tile title="Prosperity Game" onPress={() => router.push('/prosperity')} />
           </View>
         </View>
       </SafeAreaView>
@@ -118,31 +117,44 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
   },
   greeting: {
-    ...typography.bodySmall,
+    ...typography.bodyMedium,
     color: theme.colors.textBody,
     marginTop: theme.spacing.xs,
   },
 
-  hero: {
+  orbZone: {
     flex: 1,
-    justifyContent: 'center',
-  },
-  headline: {
-    ...typography.headline1,
-  },
-
-  cta: {
-    width: '100%',
-  },
-  primaryButton: {
-    borderRadius: theme.borderRadius.lg,
-    height: INPUT_HEIGHT,
-    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonText: {
-    ...typography.button,
-    color: theme.buttons.primary.textColor,
+
+  tilesWrap: {
+    flexDirection: 'row',
+    gap: theme.spacing.md,
+  },
+  tile: {
+    flex: 1,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingVertical: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    minHeight: 120,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  tilePressed: {
+    backgroundColor: theme.colors.surfaceNested,
+  },
+  tileDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.highlight,
+  },
+  tileTitle: {
+    ...typography.headline3,
+    color: theme.colors.text,
   },
 });

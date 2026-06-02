@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { Screen } from '@/components/Screen';
+import { autoCorrectText } from '@/lib/autocap';
 import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { GratitudeItem, formatStamp, groupByMonth } from '@/lib/gratitude';
 
@@ -150,7 +151,11 @@ export default function GratitudeScreen() {
               <TextInput
                 ref={inputRef}
                 value={draft}
-                onChangeText={setDraft}
+                onChangeText={(text) =>
+                  setDraft((prev) => autoCorrectText(prev, text))
+                }
+                autoCapitalize="sentences"
+                autoCorrect
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 onSubmitEditing={handleAdd}
