@@ -28,16 +28,14 @@ export function EmberOrb({
 
   return (
     <View
-      pointerEvents="box-none"
       style={[styles.wrap, { width: size, height: size }]}
       accessibilityRole="image"
       accessibilityLabel="Ember"
     >
       {showBloom ? (
         <View
-          pointerEvents="none"
           style={{
-            position: 'absolute',
+            ...styles.bloom,
             left: -(size * 1.02),
             top: -(size * 0.74),
             width: size * 3.05,
@@ -82,6 +80,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'visible',
+    pointerEvents: 'box-none',
+  },
+  bloom: {
+    position: 'absolute',
+    pointerEvents: 'none',
   },
   orbBody: {
     position: 'absolute',

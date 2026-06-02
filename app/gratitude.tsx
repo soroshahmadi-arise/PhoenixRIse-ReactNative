@@ -421,7 +421,7 @@ export default function GratitudeScreen() {
                 <ChevronLeftIcon color={theme.colors.text} />
               </Pressable>
               <Text style={styles.title} accessibilityRole="header">
-                Gratitude list
+                Gratitude List
               </Text>
             </View>
 
@@ -481,7 +481,6 @@ export default function GratitudeScreen() {
                 ) : null}
                 <View style={styles.addButtonWrap}>
                   <Animated.View
-                    pointerEvents="none"
                     style={[
                       styles.addButtonRipple,
                       {
@@ -733,6 +732,7 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: theme.colors.highlight,
+    pointerEvents: 'none',
   },
   addButtonIcon: {
     color: theme.colors.white,
@@ -894,7 +894,7 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
   },
   primaryButton: {
-    borderRadius: theme.borderRadius.lg,
+    borderRadius: theme.borderRadius.full,
     height: INPUT_HEIGHT,
     paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',

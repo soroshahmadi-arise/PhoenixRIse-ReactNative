@@ -268,7 +268,9 @@ export default function MoneyGameScreen() {
             >
               <ChevronLeftIcon color={colors.textPrimary} />
             </Pressable>
-            <Text style={styles.title}>Prosperity game</Text>
+            <Text style={styles.title} accessibilityRole="header">
+              Prosperity Game
+            </Text>
           </View>
           <Pressable
             onPress={() => setShowSettings(true)}
@@ -439,9 +441,9 @@ export default function MoneyGameScreen() {
                   onPress={handleSpendRest}
                   style={({ pressed }) => [styles.restBtn, pressed && { opacity: 0.7 }]}
                   accessibilityRole="button"
-                  accessibilityLabel="Spend the rest of today"
+                  accessibilityLabel="Use remaining amount"
                 >
-                  <Text style={styles.restBtnText}>Spend the rest</Text>
+                  <Text style={styles.restBtnText}>Use remaining</Text>
                 </Pressable>
               )}
             </View>
@@ -580,7 +582,6 @@ function DepositNotification({
         {/* one-time light shimmer */}
         {!exiting && !reduceMotion && (
           <Animated.View
-            pointerEvents="none"
             style={[styles.shimmer, { transform: [{ translateX: shimmerX }, { skewX: '-16deg' }] }]}
           >
             <LinearGradient
@@ -1151,7 +1152,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: space.md,
   },
-  shimmer: { position: 'absolute', top: 0, bottom: 0, left: 0, width: '42%' },
+  shimmer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: '42%',
+    pointerEvents: 'none',
+  },
   notifyBadge: {
     width: 44,
     height: 44,
@@ -1240,9 +1248,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.secondaryBorder,
+    borderStyle: 'dashed',
     paddingVertical: 28,
     paddingHorizontal: space.lg,
     alignItems: 'center',
+    marginBottom: space.xl,
   },
   emptyGlyph: { width: 56, height: 48, marginBottom: space.md, alignItems: 'center', justifyContent: 'center' },
   emptySparkTR: { position: 'absolute', top: 2, right: 4 },

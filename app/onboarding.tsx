@@ -55,6 +55,8 @@ export default function OnboardingScreen() {
               autoCapitalize="words"
               autoCorrect={false}
               returnKeyType="done"
+              placeholder="Your name"
+              placeholderTextColor={theme.colors.textLight}
               accessibilityLabel="Your name"
             />
           </View>

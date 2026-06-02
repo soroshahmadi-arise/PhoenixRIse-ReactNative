@@ -37,7 +37,7 @@ const RITUALS: Ritual[] = [
   {
     key: 'gratitude',
     title: 'Gratitude List',
-    phrase: 'Start the day with gratitude',
+    phrase: 'Start with gratitude',
     glyph: '❋',
     route: '/gratitude',
     tone: 'ember',
@@ -45,7 +45,7 @@ const RITUALS: Ritual[] = [
   {
     key: 'prosperity',
     title: 'Prosperity Game',
-    phrase: 'Practice abundance',
+    phrase: 'Practice prosperity',
     glyph: '✧',
     route: '/prosperity',
     tone: 'clay',
@@ -151,7 +151,7 @@ export default function HomeScreen() {
           <View style={styles.topSpacer} />
 
           {/* the orb — the emotional anchor of the screen */}
-          <View style={styles.orbBed} pointerEvents="none">
+          <View style={styles.orbBed}>
             <Animated.View
               style={{ transform: [{ scale: orbScale }], opacity: orbGlow }}
             >
@@ -290,6 +290,7 @@ const styles = StyleSheet.create({
     height: 240,
     alignItems: 'center',
     justifyContent: 'center',
+    pointerEvents: 'none',
   },
 
   /* greeting */
