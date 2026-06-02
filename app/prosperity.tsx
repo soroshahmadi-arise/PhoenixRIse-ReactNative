@@ -20,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { STORAGE_KEY, type SpendItem } from '@/lib/prosperity';
+import { theme } from '@/lib/constants';
 
 /* ──────────────────────────────────────────────────────────── */
 /* Types                                                         */
@@ -841,40 +842,41 @@ function UndoIcon({ color }: { color: string }) {
 }
 
 /* ──────────────────────────────────────────────────────────── */
-/* Tokens (mirror design.md theme)                               */
+/* Tokens — local names mapped onto the shared design system      */
+/* (lib/constants.ts) so this screen stays in sync with the app.  */
 /* ──────────────────────────────────────────────────────────── */
 
 const colors = {
-  background: '#FDFBFA',
-  surface: '#FFFFFF',
-  surfaceWarm: '#F5F0EC',
-  textPrimary: '#593B2E',
-  textSecondary: '#796558',
-  textMuted: '#8C7B70',
-  eyebrow: '#B5663A',
-  accent: '#B5663A',
-  primary: '#5C483C',
-  primaryPressed: '#4E3D32',
-  primaryText: '#FDFBFA',
-  disabled: '#E9E2DB',
-  secondaryBorder: '#E8E2D9',
-  divider: '#E8E2D9',
-  sage: '#829D94',
-  sageDark: '#5E7A70',
+  background: theme.colors.background,
+  surface: theme.colors.white,
+  surfaceWarm: theme.colors.surface,
+  textPrimary: theme.colors.text,
+  textSecondary: theme.colors.textBody,
+  textMuted: theme.colors.textLight,
+  eyebrow: theme.colors.highlight,
+  accent: theme.colors.highlight,
+  primary: theme.colors.cta,
+  primaryPressed: theme.colors.ctaHover,
+  primaryText: theme.colors.background,
+  disabled: theme.colors.disabled,
+  secondaryBorder: theme.colors.border,
+  divider: theme.colors.border,
+  sage: theme.colors.sage,
+  sageDark: theme.colors.success,
   sageTint: 'rgba(130,157,148,0.16)',
   meterTrack: 'rgba(130,157,148,0.18)',
-  tierRebirth: '#3D2010',
+  tierRebirth: theme.colors.tierRebirth,
 };
 
-const space = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 };
-const radius = { sm: 8, md: 12, lg: 14, xl: 16, xxl: 20, pill: 999 };
+const space = theme.spacing;
+const radius = { ...theme.borderRadius, pill: theme.borderRadius.full };
 
 const fonts = {
-  serif: 'SourceSerif4_600SemiBold',
-  regular: 'Manrope_400Regular',
-  medium: 'Manrope_500Medium',
-  semiBold: 'Manrope_600SemiBold',
-  bold: 'Manrope_700Bold',
+  serif: theme.fontFamily.serifSemiBold,
+  regular: theme.fontFamily.regular,
+  medium: theme.fontFamily.medium,
+  semiBold: theme.fontFamily.semiBold,
+  bold: theme.fontFamily.bold,
 };
 
 const notifyTheme = {
@@ -997,7 +999,7 @@ const styles = StyleSheet.create({
     gap: 7,
     ...Platform.select({
       ios: {
-        shadowColor: '#5C483C',
+        shadowColor: colors.primary,
         shadowOpacity: 0.2,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 },
@@ -1071,7 +1073,7 @@ const styles = StyleSheet.create({
     borderColor: colors.secondaryBorder,
     ...Platform.select({
       ios: {
-        shadowColor: '#593B2E',
+        shadowColor: colors.textPrimary,
         shadowOpacity: 0.04,
         shadowRadius: 2,
         shadowOffset: { width: 0, height: 1 },

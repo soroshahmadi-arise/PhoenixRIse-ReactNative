@@ -177,7 +177,10 @@ function colorValue(name: string): string {
 }
 
 const COLOR_GROUPS: { title: string; tokens: string[] }[] = [
-  { title: 'Brand', tokens: ['primary', 'background', 'cta', 'ctaHover', 'highlight', 'mocha', 'sage'] },
+  {
+    title: 'Brand',
+    tokens: ['primary', 'background', 'cta', 'ctaHover', 'highlight', 'highlightPressed', 'mocha', 'sage'],
+  },
   { title: 'Text', tokens: ['text', 'textBody', 'textLight'] },
   {
     title: 'Surfaces',

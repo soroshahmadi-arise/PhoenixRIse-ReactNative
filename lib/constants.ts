@@ -13,6 +13,7 @@ export const theme = {
     cta: '#5C483C',
     ctaHover: '#4E3D32',
     highlight: '#B5663A',
+    highlightPressed: '#9A5731',
 
     // Legacy aliases (map to new tokens, migrate gradually)
     accent: '#5C483C',

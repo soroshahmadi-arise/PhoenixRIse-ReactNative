@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   ctaButtonPressed: {
-    backgroundColor: '#9A5731',
+    backgroundColor: theme.colors.highlightPressed,
   },
   ctaButtonDisabled: {
     opacity: 0.4,
