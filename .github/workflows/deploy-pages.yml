@@ -34,7 +34,7 @@ jobs:
 
       - name: Build static web bundle
         env:
-          EXPO_BASE_URL: /PhoenixRIse-ReactNative
+          EXPO_BASE_URL: /PhoenixRise-ReactNative
         run: npx expo export --platform web
 
       - name: Prevent Jekyll from filtering _expo assets
