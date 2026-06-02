@@ -172,8 +172,8 @@ export default function HomeScreen() {
           {/* push the launcher toward the bottom — breathing room above */}
           <View style={styles.spacer} />
 
-          {/* the rituals — an inviting line on the left, the app on the
-              right, split by a hairline */}
+          {/* the rituals — the app icon on the left, an inviting line and
+              the app name beside it, split by a hairline */}
           <View style={styles.appsList}>
             {RITUALS.map((r, i) => (
               <React.Fragment key={r.key}>
@@ -185,6 +185,14 @@ export default function HomeScreen() {
                   style={styles.row}
                   pressedStyle={styles.rowPressed}
                 >
+                  <View
+                    style={[
+                      styles.appIcon,
+                      r.tone === 'ember' ? styles.iconEmber : styles.iconClay,
+                    ]}
+                  >
+                    <Text style={styles.appGlyph}>{r.glyph}</Text>
+                  </View>
                   <View style={styles.rowText}>
                     <Text
                       style={styles.rowPhrase}
@@ -197,14 +205,6 @@ export default function HomeScreen() {
                     <Text style={[st.label, styles.rowApp]} numberOfLines={1}>
                       {r.title}
                     </Text>
-                  </View>
-                  <View
-                    style={[
-                      styles.appIcon,
-                      r.tone === 'ember' ? styles.iconEmber : styles.iconClay,
-                    ]}
-                  >
-                    <Text style={styles.appGlyph}>{r.glyph}</Text>
                   </View>
                   <Text style={styles.chevron}>›</Text>
                 </PressableScale>

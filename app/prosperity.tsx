@@ -117,7 +117,10 @@ export default function MoneyGameScreen() {
   // balance "pop" whenever it changes (skipped under Reduce Motion)
   const balanceScale = useRef(new Animated.Value(1)).current;
   useEffect(() => {
-    if (reduceMotion) return;
+    if (reduceMotion) {
+      balanceScale.setValue(1);
+      return;
+    }
     Animated.sequence([
       Animated.timing(balanceScale, {
         toValue: 1.06,
@@ -219,6 +222,7 @@ export default function MoneyGameScreen() {
   };
 
   const handleAdvanceDay = () => {
+    if (!accepted) return;
     setDay((d) => d + 1);
     setAccepted(false);
     setDraftDesc('');
@@ -311,12 +315,16 @@ export default function MoneyGameScreen() {
 
         <PressableScale
           onPress={handleAdvanceDay}
+          disabled={!accepted}
           style={styles.completeBtn}
           pressedStyle={styles.completeBtnPressed}
-          accessibilityLabel={`Complete day ${day}`}
+          disabledStyle={styles.completeBtnDisabled}
+          accessibilityLabel={accepted ? `Complete day ${day}` : 'Accept deposit before completing the day'}
         >
-          <Text style={styles.completeBtnText}>Complete Day {day}</Text>
-          <Text style={styles.completeBtnArrow}>→</Text>
+          <Text style={styles.completeBtnText}>
+            {accepted ? `Complete Day ${day}` : 'Accept Deposit First'}
+          </Text>
+          <Text style={styles.completeBtnArrow}>{accepted ? '→' : ''}</Text>
         </PressableScale>
       </View>
 
@@ -378,6 +386,7 @@ export default function MoneyGameScreen() {
             textAlignVertical="top"
             style={styles.descInput}
             maxLength={200}
+            accessibilityLabel="Spending description"
           />
 
           {draftImage && (
@@ -410,6 +419,7 @@ export default function MoneyGameScreen() {
                 keyboardType="number-pad"
                 returnKeyType="done"
                 style={styles.amountInput}
+                accessibilityLabel="Spending amount"
               />
             </View>
 
@@ -493,6 +503,9 @@ function DepositNotification({
   useEffect(() => {
     if (reduceMotion) {
       enter.setValue(1); // present, settled — no slide, shimmer, or float
+      exit.setValue(0);
+      float.setValue(0);
+      shimmer.setValue(1);
       return;
     }
 
@@ -633,7 +646,13 @@ function SpendRow({ item, onRemove }: { item: SpendItem; onRemove: () => void })
           <Text style={styles.rowChipText}>{formatMoney(item.amount)}</Text>
         </View>
       </View>
-      <Pressable onPress={onRemove} style={styles.removeBtn} hitSlop={10} accessibilityLabel="Remove">
+      <Pressable
+        onPress={onRemove}
+        style={styles.removeBtn}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel={`Remove ${item.description}`}
+      >
         <Text style={styles.removeBtnText}>×</Text>
       </Pressable>
     </View>
@@ -742,7 +761,12 @@ function SettingsSheet({
           <View style={styles.sheetGrabber} />
           <View style={styles.sheetTitleRow}>
             <Text style={styles.sheetTitle}>Adjust your game</Text>
-            <Pressable onPress={onClose} hitSlop={8}>
+            <Pressable
+              onPress={onClose}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Close settings"
+            >
               <Text style={styles.sheetClose}>×</Text>
             </Pressable>
           </View>
@@ -755,6 +779,7 @@ function SettingsSheet({
                 onChangeText={(t) => setDayDraft(t.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
                 style={styles.settingsInput}
+                accessibilityLabel="Current day"
               />
               <Text style={styles.settingsHint}>
                 Deposit: {formatMoney(depositForDay(parseInt(dayDraft, 10) || 0))}
@@ -770,6 +795,7 @@ function SettingsSheet({
                   onChangeText={(t) => setBalanceDraft(t.replace(/[^0-9]/g, ''))}
                   keyboardType="number-pad"
                   style={styles.settingsAmountInput}
+                  accessibilityLabel="Current balance"
                 />
               </View>
               <Text style={styles.settingsHint}>Your running total.</Text>
@@ -1101,6 +1127,14 @@ const styles = StyleSheet.create({
     }),
   },
   completeBtnPressed: { backgroundColor: colors.primaryPressed },
+  completeBtnDisabled: {
+    backgroundColor: colors.disabled,
+    ...Platform.select({
+      ios: { shadowOpacity: 0 },
+      android: { elevation: 0 },
+      default: { boxShadow: 'none' as any },
+    }),
+  },
   completeBtnText: { fontFamily: fonts.semiBold, fontSize: 14, fontWeight: '600', color: colors.primaryText },
   completeBtnArrow: { fontSize: 15, lineHeight: 15, color: 'rgba(253,251,250,0.7)' },
 

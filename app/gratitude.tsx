@@ -407,22 +407,25 @@ export default function GratitudeScreen() {
       >
         <View style={styles.screen}>
           <View style={styles.topRegion}>
-            <Pressable
-              onPress={goHome}
-              hitSlop={10}
-              style={({ pressed }) => [
-                styles.backBtn,
-                pressed && styles.backBtnPressed,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Back to home"
-            >
-              <ChevronLeftIcon color={theme.colors.text} />
-            </Pressable>
+            <View style={styles.headerRow}>
+              <Pressable
+                onPress={goHome}
+                hitSlop={10}
+                style={({ pressed }) => [
+                  styles.backBtn,
+                  pressed && styles.backBtnPressed,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Back to home"
+              >
+                <ChevronLeftIcon color={theme.colors.text} />
+              </Pressable>
+              <Text style={styles.title} accessibilityRole="header">
+                Gratitude list
+              </Text>
+            </View>
 
-            <Text style={styles.eyebrow} accessibilityRole="header">
-              WHAT ARE YOU GRATEFUL FOR TODAY?
-            </Text>
+            <Text style={styles.eyebrow}>WHAT ARE YOU GRATEFUL FOR TODAY?</Text>
 
             <View style={[styles.composer, inputFocused && styles.composerFocused]}>
               <TextInput
@@ -595,9 +598,9 @@ export default function GratitudeScreen() {
                 { backgroundColor: primaryBtn.backgroundColor },
               ]}
               pressedStyle={{ backgroundColor: primaryBtn.pressedBackground }}
-              accessibilityLabel="Save and exit"
+              accessibilityLabel="Done with gratitude list"
             >
-              <Text style={styles.primaryButtonText}>Save & Exit</Text>
+              <Text style={styles.primaryButtonText}>Done</Text>
             </PressableScale>
           </View>
         </View>
@@ -617,18 +620,28 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
 
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+  },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
     marginLeft: -10,
-    marginBottom: theme.spacing.xs,
   },
   backBtnPressed: {
     backgroundColor: theme.colors.surfaceNested,
+  },
+  title: {
+    fontFamily: theme.fontFamily.serifSemiBold,
+    fontSize: 25,
+    letterSpacing: -0.4,
+    color: theme.colors.text,
   },
 
   eyebrow: {
