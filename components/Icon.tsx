@@ -23,6 +23,7 @@
  */
 import {
   ArrowCounterClockwise as PhosphorArrowCounterClockwise,
+  CaretDown as PhosphorCaretDown,
   CaretLeft as PhosphorCaretLeft,
   CaretRight as PhosphorCaretRight,
   ClockCounterClockwise as PhosphorClockCounterClockwise,
@@ -53,6 +54,10 @@ function withIconDefaults(props: AppIconProps) {
     weight: DEFAULT_ICON_WEIGHT,
     ...props,
   };
+}
+
+export function CaretDown(props: AppIconProps) {
+  return <PhosphorCaretDown {...withIconDefaults(props)} />;
 }
 
 export function CaretLeft(props: AppIconProps) {
