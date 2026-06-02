@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { EmberOrb } from '@/components/EmberOrb';
+import { Banknote, CaretRight, Sparkle } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { theme, typography } from '@/lib/constants';
 import { timeOfDayGreeting } from '@/lib/greeting';
@@ -28,7 +29,7 @@ type Ritual = {
   key: string;
   title: string;
   phrase: string; // the inviting line on the left
-  glyph: string;
+  icon: 'gratitude' | 'prosperity';
   route: '/gratitude' | '/prosperity';
   tone: 'ember' | 'clay';
 };
@@ -38,7 +39,7 @@ const RITUALS: Ritual[] = [
     key: 'gratitude',
     title: 'Gratitude List',
     phrase: 'Start with gratitude',
-    glyph: '❋',
+    icon: 'gratitude',
     route: '/gratitude',
     tone: 'ember',
   },
@@ -46,7 +47,7 @@ const RITUALS: Ritual[] = [
     key: 'prosperity',
     title: 'Prosperity Game',
     phrase: 'Practice prosperity',
-    glyph: '✧',
+    icon: 'prosperity',
     route: '/prosperity',
     tone: 'clay',
   },
@@ -65,6 +66,12 @@ function periodForHour(hour: number): Period {
   if (hour < 12) return 'morning';
   if (hour < 18) return 'afternoon';
   return 'evening';
+}
+
+function RitualIcon({ icon }: { icon: Ritual['icon'] }) {
+  const iconProps = { size: 24, color: theme.colors.white };
+  if (icon === 'prosperity') return <Banknote {...iconProps} />;
+  return <Sparkle {...iconProps} />;
 }
 
 export default function HomeScreen() {
@@ -191,7 +198,7 @@ export default function HomeScreen() {
                       r.tone === 'ember' ? styles.iconEmber : styles.iconClay,
                     ]}
                   >
-                    <Text style={styles.appGlyph}>{r.glyph}</Text>
+                    <RitualIcon icon={r.icon} />
                   </View>
                   <View style={styles.rowText}>
                     <Text
@@ -206,7 +213,7 @@ export default function HomeScreen() {
                       {r.title}
                     </Text>
                   </View>
-                  <Text style={styles.chevron}>›</Text>
+                  <CaretRight size={20} color={theme.colors.textLight} />
                 </PressableScale>
               </React.Fragment>
             ))}
@@ -364,14 +371,5 @@ const styles = StyleSheet.create({
   },
   iconClay: {
     backgroundColor: theme.colors.cta,
-  },
-  appGlyph: {
-    fontSize: 24,
-    color: '#FDFBFA',
-  },
-  chevron: {
-    fontSize: 24,
-    lineHeight: 24,
-    color: theme.colors.textLight,
   },
 });
