@@ -382,17 +382,13 @@ export default function MoneyGameScreen() {
               </Animated.Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={styles.statLabel}>DAY {day} DEPOSIT</Text>
-              <Text style={styles.depositValue}>{formatMoney(todaysDeposit)}</Text>
+              <Text style={styles.statLabel}>TOTAL RECEIVED</Text>
+              <Text style={styles.depositValue}>{formatMoney(totalReceived)}</Text>
             </View>
           </View>
 
           <View style={styles.meterTrack}>
             <View style={[styles.meterFill, { width: `${meterPct * 100}%` }]} />
-          </View>
-          <View style={styles.meterRow}>
-            <Text style={styles.meterLabel}>Spent today {formatMoney(spentToday)}</Text>
-            <Text style={styles.meterLabel}>Total received {formatMoney(totalReceived)}</Text>
           </View>
         </View>
 
@@ -1347,16 +1343,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.meterTrack,
     borderRadius: radius.pill,
     overflow: 'hidden',
-    marginBottom: 6,
   },
   meterFill: { height: '100%', backgroundColor: colors.sage, borderRadius: radius.pill },
-  meterRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  meterLabel: {
-    fontFamily: fonts.regular,
-    fontSize: 11.5,
-    color: colors.textMuted,
-    fontVariant: ['tabular-nums'],
-  },
 
   /* Notification */
   notifyOuter: { marginBottom: space.md },
@@ -1426,13 +1414,12 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.divider,
   },
+  /* Skip = secondary (text-only on transparent surface, per design system) */
   skipBtn: {
     flex: 1,
-    height: 44,
-    borderRadius: theme.buttons.primary.borderRadius,
-    paddingHorizontal: space.md,
-    borderWidth: 1.5,
-    borderColor: colors.secondaryBorder,
+    height: theme.buttons.secondary.height,
+    borderRadius: theme.buttons.secondary.borderRadius,
+    paddingHorizontal: space.lg,
     backgroundColor: theme.buttons.secondary.backgroundColor,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1442,21 +1429,22 @@ const styles = StyleSheet.create({
   },
   skipBtnText: {
     fontFamily: fonts.semiBold,
-    fontSize: 13,
+    fontSize: theme.buttons.secondary.fontSize,
     fontWeight: '600',
     color: theme.buttons.secondary.textColor,
   },
+  /* Done = primary (filled, per design system) */
   doneBtn: {
     flex: 1,
-    height: 44,
+    height: theme.buttons.primary.height,
     borderRadius: theme.buttons.primary.borderRadius,
-    paddingHorizontal: space.md,
+    paddingHorizontal: space.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   doneBtnText: {
     fontFamily: fonts.semiBold,
-    fontSize: 13,
+    fontSize: theme.buttons.primary.fontSize,
     fontWeight: '600',
     color: theme.buttons.primary.textColor,
   },
