@@ -160,9 +160,21 @@ export default function GratitudeScreen() {
                 onFocus={() => setInputFocused(true)}
                 onBlur={() => setInputFocused(false)}
                 onSubmitEditing={handleAdd}
+                onKeyPress={(e) => {
+                  const ev = e.nativeEvent as unknown as {
+                    key: string;
+                    shiftKey?: boolean;
+                    preventDefault?: () => void;
+                  };
+                  if (ev.key === 'Enter' && !ev.shiftKey) {
+                    ev.preventDefault?.();
+                    handleAdd();
+                  }
+                }}
                 placeholder="I am grateful for..."
                 placeholderTextColor="#B8A595"
-                returnKeyType="done"
+                returnKeyType="send"
+                {...({ enterKeyHint: 'send' } as object)}
                 blurOnSubmit={false}
                 multiline
                 style={styles.promptInput}
