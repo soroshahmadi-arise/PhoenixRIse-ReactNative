@@ -124,7 +124,7 @@ export default function HomeScreen() {
     theme.colors.homeGlowInner,
     theme.colors.homeBackground,
     theme.colors.homeBottomFade,
-  ];
+  ] as const;
 
   if (!ready) return <View style={styles.root} />;
 
