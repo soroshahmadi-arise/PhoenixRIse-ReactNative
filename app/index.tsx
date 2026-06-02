@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { AppButton } from '@/components/AppButton';
 import { Screen } from '@/components/Screen';
-import { AppName, Colors, FontSize, Spacing } from '@/lib/constants';
+import { AppName, theme, typography } from '@/lib/constants';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -41,33 +41,23 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   brand: {
-    fontSize: FontSize.body,
-    fontWeight: '600',
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xl,
-    letterSpacing: 0.4,
+    ...typography.label,
+    marginBottom: theme.spacing.xl,
   },
   eyebrow: {
-    fontSize: FontSize.eyebrow,
-    fontWeight: '700',
-    color: Colors.eyebrow,
-    letterSpacing: 1.6,
-    marginBottom: Spacing.md,
+    ...typography.micro,
+    textTransform: 'uppercase',
+    marginBottom: theme.spacing.md,
   },
   headline: {
-    fontSize: FontSize.headline,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    lineHeight: 40,
-    marginBottom: Spacing.lg,
+    ...typography.headline1,
+    marginBottom: theme.spacing.lg,
   },
   subtext: {
-    fontSize: FontSize.subtext,
-    color: Colors.textSecondary,
-    lineHeight: 26,
-    marginBottom: Spacing.xxl,
+    ...typography.bodyLarge,
+    marginBottom: theme.spacing.xxl,
   },
   actions: {
-    gap: Spacing.md,
+    gap: theme.spacing.md,
   },
 });

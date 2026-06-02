@@ -1,10 +1,10 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { Colors, FontSize, Radius, Spacing } from '@/lib/constants';
+import { theme, typography } from '@/lib/constants';
 import type { AppButtonProps } from '@/lib/types';
 
 export function AppButton({ label, onPress, variant = 'primary' }: AppButtonProps) {
-  const isPrimary = variant === 'primary';
+  const spec = variant === 'primary' ? theme.buttons.primary : theme.buttons.secondary;
 
   return (
     <Pressable
@@ -12,49 +12,22 @@ export function AppButton({ label, onPress, variant = 'primary' }: AppButtonProp
       accessibilityRole="button"
       style={({ pressed }) => [
         styles.base,
-        isPrimary ? styles.primary : styles.secondary,
-        pressed && (isPrimary ? styles.primaryPressed : styles.secondaryPressed),
+        {
+          backgroundColor: pressed ? spec.pressedBackground : spec.backgroundColor,
+          height: spec.height,
+          borderRadius: spec.borderRadius,
+        },
       ]}
     >
-      <Text style={[styles.label, isPrimary ? styles.primaryLabel : styles.secondaryLabel]}>
-        {label}
-      </Text>
+      <Text style={[typography.button, { color: spec.textColor }]}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   base: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    borderRadius: Radius.pill,
+    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 54,
-  },
-  primary: {
-    backgroundColor: Colors.primary,
-  },
-  primaryPressed: {
-    backgroundColor: Colors.primaryPressed,
-  },
-  secondary: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: Colors.secondaryBorder,
-  },
-  secondaryPressed: {
-    backgroundColor: 'rgba(232, 201, 168, 0.2)',
-  },
-  label: {
-    fontSize: FontSize.button,
-    fontWeight: '600',
-    letterSpacing: 0.2,
-  },
-  primaryLabel: {
-    color: Colors.primaryText,
-  },
-  secondaryLabel: {
-    color: Colors.secondaryText,
   },
 });

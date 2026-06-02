@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 
 import { Screen } from '@/components/Screen';
-import { Colors, Radius, Spacing } from '@/lib/constants';
+import { INPUT_HEIGHT, theme, typography } from '@/lib/constants';
 import { GratitudeItem, formatStamp, groupByMonth } from '@/lib/gratitude';
 
 const STORAGE_KEY = 'phoenix-rise/gratitude/v1';
@@ -75,9 +75,7 @@ export default function GratitudeScreen() {
     if (!loaded) return;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
     saveTimeoutRef.current = setTimeout(() => {
-      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items)).catch(() => {
-        // best-effort persistence
-      });
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items)).catch(() => {});
     }, SAVE_DEBOUNCE_MS);
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -108,19 +106,13 @@ export default function GratitudeScreen() {
   };
 
   const handleSave = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   };
 
   const handleBack = () => {
-    if (router.canGoBack()) {
-      router.back();
-    } else {
-      router.replace('/');
-    }
+    if (router.canGoBack()) router.back();
+    else router.replace('/');
   };
 
   const sections: Section[] = groupByMonth(items).map((g) => ({
@@ -129,6 +121,8 @@ export default function GratitudeScreen() {
     count: g.items.length,
     data: g.items,
   }));
+
+  const primaryBtn = theme.buttons.primary;
 
   return (
     <Screen scrollable={false}>
@@ -172,7 +166,7 @@ export default function GratitudeScreen() {
                   }
                 }}
                 placeholder="I am grateful for..."
-                placeholderTextColor="#B8A595"
+                placeholderTextColor={theme.colors.textLight}
                 returnKeyType="send"
                 {...({ enterKeyHint: 'send' } as object)}
                 blurOnSubmit={false}
@@ -187,18 +181,18 @@ export default function GratitudeScreen() {
               disabled={!canAdd}
               style={({ pressed }) => [
                 styles.addButton,
+                {
+                  backgroundColor: pressed && canAdd
+                    ? primaryBtn.pressedBackground
+                    : primaryBtn.backgroundColor,
+                },
                 !canAdd && styles.addButtonDisabled,
-                pressed && canAdd && styles.addButtonPressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel="Add gratitude item"
               accessibilityState={{ disabled: !canAdd }}
             >
-              <Text
-                style={[styles.addButtonText, !canAdd && styles.addButtonTextDisabled]}
-              >
-                + Add to list
-              </Text>
+              <Text style={styles.addButtonText}>+ Add to list</Text>
             </Pressable>
           </View>
 
@@ -267,7 +261,11 @@ export default function GratitudeScreen() {
               onPress={handleSave}
               style={({ pressed }) => [
                 styles.primaryButton,
-                pressed && styles.primaryButtonPressed,
+                {
+                  backgroundColor: pressed
+                    ? primaryBtn.pressedBackground
+                    : primaryBtn.backgroundColor,
+                },
               ]}
               accessibilityRole="button"
               accessibilityLabel="Save and exit"
@@ -282,211 +280,161 @@ export default function GratitudeScreen() {
 }
 
 const styles = StyleSheet.create({
-  kav: {
-    flex: 1,
-    width: '100%',
-  },
-  screen: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  topRegion: {
-    flexShrink: 0,
-  },
-  scroll: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
+  kav: { flex: 1, width: '100%' },
+  screen: { flex: 1, backgroundColor: 'transparent' },
+  topRegion: { flexShrink: 0 },
+  scroll: { flex: 1, backgroundColor: 'transparent' },
   scrollContent: {
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.md,
+    paddingTop: theme.spacing.sm,
+    paddingBottom: theme.spacing.md,
     flexGrow: 1,
   },
 
   backLink: {
     alignSelf: 'flex-start',
-    paddingVertical: Spacing.xs,
-    marginBottom: Spacing.md,
+    paddingVertical: theme.spacing.xs,
+    marginBottom: theme.spacing.md,
   },
-  backLinkPressed: {
-    opacity: 0.55,
-  },
+  backLinkPressed: { opacity: 0.55 },
   backLinkText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: Colors.textSecondary,
+    ...typography.bodyMedium,
+    color: theme.colors.textBody,
   },
 
   eyebrow: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.6,
+    ...typography.micro,
     textTransform: 'uppercase',
-    color: Colors.eyebrow,
-    marginBottom: Spacing.md,
+    marginBottom: theme.spacing.md,
   },
 
   composer: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
     borderWidth: 1.5,
-    borderColor: Colors.secondaryBorder,
-    paddingTop: Spacing.lg,
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
-    marginBottom: Spacing.md,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#2A1A10',
-        shadowOpacity: 0.05,
-        shadowRadius: 16,
-        shadowOffset: { width: 0, height: 6 },
-      },
-      android: {
-        elevation: 0,
-      },
+    borderColor: theme.colors.border,
+    paddingTop: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    ...Platform.select<object>({
+      ios: theme.shadows.subtle,
+      android: { elevation: 0 },
       default: {},
     }),
   },
   composerFocused: {
-    borderColor: Colors.primary,
+    borderColor: theme.colors.highlight,
   },
   promptInput: {
-    fontSize: 22,
-    lineHeight: 30,
-    fontWeight: '600',
-    color: Colors.textPrimary,
+    fontFamily: theme.fontFamily.semiBold,
+    fontSize: 20,
+    lineHeight: 28,
+    letterSpacing: -0.3,
+    color: theme.colors.text,
     minHeight: 60,
     padding: 0,
     textAlignVertical: 'top',
     ...Platform.select({
-      web: {
-        outlineStyle: 'none' as 'none',
-      },
+      web: { outlineStyle: 'none' as 'none' },
       default: {},
     }),
   },
+
   addButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.pill,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
-    minHeight: 54,
+    borderRadius: theme.borderRadius.lg,
+    height: INPUT_HEIGHT,
+    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.xl,
-  },
-  addButtonPressed: {
-    backgroundColor: Colors.primaryPressed,
+    marginBottom: theme.spacing.xl,
   },
   addButtonDisabled: {
-    backgroundColor: '#F2D9C2',
+    opacity: theme.buttons.disabled.opacity,
   },
   addButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: Colors.primaryText,
-    letterSpacing: 0.2,
-  },
-  addButtonTextDisabled: {
-    color: '#FFFFFF',
-    opacity: 0.85,
+    ...typography.button,
+    color: theme.buttons.primary.textColor,
   },
 
   countText: {
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.4,
-    color: Colors.textMuted,
-    marginBottom: Spacing.md,
+    ...typography.meta,
+    marginBottom: theme.spacing.md,
   },
 
   groupHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
-    backgroundColor: Colors.background,
-    paddingBottom: Spacing.sm + 2,
-    marginBottom: Spacing.sm + 2,
+    backgroundColor: theme.colors.background,
+    paddingBottom: theme.spacing.sm + 2,
+    marginBottom: theme.spacing.sm + 2,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(232, 201, 168, 0.5)',
+    borderBottomColor: theme.colors.border,
   },
   groupHeaderTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    letterSpacing: -0.2,
+    ...typography.headline3,
+    color: theme.colors.highlight,
   },
   groupHeaderCount: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textMuted,
-    letterSpacing: 0.4,
+    ...typography.meta,
+    color: theme.colors.textLight,
   },
 
   emptyState: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.xl,
     borderWidth: 1,
-    borderColor: Colors.secondaryBorder,
+    borderColor: theme.colors.border,
     borderStyle: 'dashed',
-    paddingVertical: Spacing.xl,
-    paddingHorizontal: Spacing.lg,
+    paddingVertical: theme.spacing.xl,
+    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
-    marginBottom: Spacing.xl,
+    marginBottom: theme.spacing.xl,
   },
   emptyMark: {
     width: 48,
     height: 48,
-    borderRadius: Radius.pill,
-    backgroundColor: '#FFE9D4',
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.emberBubble,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.md,
+    marginBottom: theme.spacing.md,
   },
   emptyMarkText: {
     fontSize: 22,
-    color: Colors.primary,
-    fontWeight: '600',
+    fontFamily: theme.fontFamily.semiBold,
+    color: theme.colors.highlight,
   },
   emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+    ...typography.headline3,
+    marginBottom: theme.spacing.xs,
     textAlign: 'center',
   },
   emptyBody: {
-    fontSize: 15,
-    lineHeight: 22,
-    color: Colors.textSecondary,
+    ...typography.bodyMedium,
     textAlign: 'center',
     maxWidth: 320,
   },
 
-  itemSeparator: {
-    height: Spacing.sm,
-  },
-  sectionSeparator: {
-    height: Spacing.lg,
-  },
+  itemSeparator: { height: theme.spacing.sm },
+  sectionSeparator: { height: theme.spacing.lg },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.md,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
     borderWidth: 1,
-    borderColor: Colors.secondaryBorder,
-    paddingVertical: Spacing.sm + 2,
-    paddingLeft: Spacing.md,
-    paddingRight: Spacing.xs,
-    gap: Spacing.md,
+    borderColor: theme.colors.border,
+    paddingVertical: theme.spacing.sm + 2,
+    paddingLeft: theme.spacing.md,
+    paddingRight: theme.spacing.xs,
+    gap: theme.spacing.md,
   },
   listItemDot: {
     width: 8,
     height: 8,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.primary,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.highlight,
     flexShrink: 0,
   },
   listItemBody: {
@@ -495,56 +443,45 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   listItemText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: Colors.textPrimary,
-    fontWeight: '500',
+    ...typography.bodyMedium,
+    color: theme.colors.text,
+    fontFamily: theme.fontFamily.medium,
   },
   listItemStamp: {
-    fontSize: 12,
-    lineHeight: 16,
-    color: Colors.textMuted,
-    letterSpacing: 0.2,
+    ...typography.meta,
   },
   removeButton: {
     width: 32,
     height: 32,
-    borderRadius: Radius.pill,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeButtonPressed: {
-    backgroundColor: '#FFF0E0',
+    backgroundColor: theme.colors.warmOverlay,
   },
   removeButtonText: {
     fontSize: 22,
     lineHeight: 24,
-    color: Colors.textMuted,
-    fontWeight: '400',
+    color: theme.colors.textLight,
+    fontFamily: theme.fontFamily.regular,
   },
 
   ctaWrap: {
-    paddingTop: Spacing.md,
-    marginTop: Spacing.sm,
+    paddingTop: theme.spacing.md,
+    marginTop: theme.spacing.sm,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(232, 201, 168, 0.5)',
+    borderTopColor: theme.colors.border,
   },
   primaryButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.pill,
-    minHeight: 54,
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    height: INPUT_HEIGHT,
+    paddingHorizontal: theme.spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonPressed: {
-    backgroundColor: Colors.primaryPressed,
-  },
   primaryButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: Colors.primaryText,
-    letterSpacing: 0.2,
+    ...typography.button,
+    color: theme.buttons.primary.textColor,
   },
 });
