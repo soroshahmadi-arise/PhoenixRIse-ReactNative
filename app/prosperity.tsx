@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ArrowCounterClockwise,
   Banknote,
+  ClockCounterClockwise,
   Gear,
   Image as ImageIcon,
   Plus,
@@ -36,10 +37,12 @@ import {
   balanceFor,
   canSpendAmount,
   completeDay as completeDayState,
+  daysWithSpending,
   depositForDay,
   formatMoney,
   itemsForDay,
   isMilestoneDay,
+  lookBack,
   remainingForDay,
   spentForDay,
   STORAGE_KEY,
@@ -103,14 +106,30 @@ export default function MoneyGameScreen() {
   const [focused, setFocused] = useState(false);
   const [resetSnapshot, setResetSnapshot] = useState<ResetSnapshot | null>(null);
 
+  // which day's spending the list is showing (defaults to the live day)
+  const [viewDay, setViewDay] = useState(1);
+
   const scrollRef = useRef<ScrollView>(null);
 
   // derived
   const todaysDeposit = depositForDay(day);
   const totalSpent = useMemo(() => totalSpentForItems(items), [items]);
   const balance = balanceFor(totalReceived, totalSpent);
-  const todaysItems = useMemo(() => itemsForDay(items, day), [items, day]);
   const spentToday = useMemo(() => spentForDay(items, day), [items, day]);
+
+  // history browsing
+  const isViewingToday = viewDay === day;
+  const viewItems = useMemo(() => itemsForDay(items, viewDay), [items, viewDay]);
+  const spentOnViewDay = useMemo(() => spentForDay(items, viewDay), [items, viewDay]);
+  const summary = useMemo(() => lookBack(items, day), [items, day]);
+  const dayChips = useMemo(() => {
+    const past = daysWithSpending(items).filter((d) => d < day);
+    return [day, ...past].map((d) => ({
+      day: d,
+      label: d === day ? 'Today' : `Day ${d}`,
+      total: spentForDay(items, d),
+    }));
+  }, [items, day]);
   const remainingToday = remainingForDay(day, spentToday);
   const parsedAmount = parseInt((draftAmount || '').replace(/[^0-9]/g, ''), 10) || 0;
   const amountExceedsBalance = parsedAmount > balance;
@@ -160,7 +179,10 @@ export default function MoneyGameScreen() {
         try {
           const parsed = JSON.parse(raw);
           if (parsed && typeof parsed === 'object') {
-            if (typeof parsed.day === 'number') setDay(parsed.day);
+            if (typeof parsed.day === 'number') {
+              setDay(parsed.day);
+              setViewDay(parsed.day);
+            }
             if (typeof parsed.totalReceived === 'number')
               setTotalReceived(parsed.totalReceived);
             if (Array.isArray(parsed.items)) setItems(parsed.items);
@@ -247,6 +269,7 @@ export default function MoneyGameScreen() {
     if (!accepted) return;
     const next = completeDayState({ day, totalReceived, items, accepted });
     setDay(next.day);
+    setViewDay(next.day);
     setAccepted(next.accepted);
     setDraftDesc('');
     setDraftAmount('');
@@ -258,6 +281,7 @@ export default function MoneyGameScreen() {
   const handleReset = () => {
     setResetSnapshot({ day, totalReceived, items, accepted });
     setDay(1);
+    setViewDay(1);
     setTotalReceived(0);
     setItems([]);
     setAccepted(false);
@@ -266,6 +290,7 @@ export default function MoneyGameScreen() {
   const handleUndoReset = () => {
     if (!resetSnapshot) return;
     setDay(resetSnapshot.day);
+    setViewDay(resetSnapshot.day);
     setTotalReceived(resetSnapshot.totalReceived);
     setItems(resetSnapshot.items);
     setAccepted(resetSnapshot.accepted);
@@ -357,27 +382,105 @@ export default function MoneyGameScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
+        {day > 1 && (
+          <View style={styles.lookBackCard}>
+            <View style={styles.lookBackHeader}>
+              <ClockCounterClockwise size={15} color={colors.textMuted} />
+              <Text style={styles.lookBackTitle}>LOOKING BACK</Text>
+            </View>
+            <View style={styles.lookBackRow}>
+              <LookBackStat label="Day before" value={summary.yesterday} />
+              <LookBackStat label="Last 7 days" value={summary.last7} />
+              <LookBackStat label="Last 30 days" value={summary.last30} />
+            </View>
+          </View>
+        )}
+
+        {dayChips.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.historyChipsScroll}
+            contentContainerStyle={styles.historyChipsRow}
+          >
+            {dayChips.map((chip) => {
+              const isActive = chip.day === viewDay;
+              return (
+                <Pressable
+                  key={chip.day}
+                  onPress={() => setViewDay(chip.day)}
+                  style={({ pressed }) => [
+                    styles.historyChip,
+                    isActive && styles.historyChipActive,
+                    pressed && !isActive && styles.historyChipPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={`${chip.label}, spent ${formatMoney(chip.total)}`}
+                >
+                  <Text
+                    style={[styles.historyChipText, isActive && styles.historyChipTextActive]}
+                  >
+                    {chip.label}
+                  </Text>
+                  <Text
+                    style={[styles.historyChipCount, isActive && styles.historyChipCountActive]}
+                  >
+                    {formatMoney(chip.total)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        )}
+
         <View style={styles.listHeader}>
-          <Text style={styles.listTitle}>Today's spending</Text>
-          {todaysItems.length > 0 && (
+          <Text style={styles.listTitle}>
+            {isViewingToday ? "Today's spending" : `Day ${viewDay} spending`}
+          </Text>
+          {viewItems.length > 0 && (
             <View style={styles.countPill}>
-              <Text style={styles.countPillText}>{todaysItems.length}</Text>
+              <Text style={styles.countPillText}>{viewItems.length}</Text>
             </View>
           )}
         </View>
 
-        {todaysItems.length === 0 ? (
-          <EmptyState dayDeposit={todaysDeposit} />
+        {viewItems.length === 0 ? (
+          <EmptyState
+            dayDeposit={depositForDay(viewDay)}
+            day={viewDay}
+            viewingPast={!isViewingToday}
+          />
         ) : (
           <View style={{ gap: space.sm }}>
-            {[...todaysItems].reverse().map((it) => (
-              <SpendRow key={it.id} item={it} onRemove={() => handleRemoveItem(it.id)} />
+            {[...viewItems].reverse().map((it) => (
+              <SpendRow
+                key={it.id}
+                item={it}
+                onRemove={isViewingToday ? () => handleRemoveItem(it.id) : undefined}
+              />
             ))}
           </View>
         )}
       </ScrollView>
 
-      {/* ── Sticky composer ──────────────────────────────────── */}
+      {/* ── Sticky composer (today) / past-day hint ──────────── */}
+      {!isViewingToday ? (
+        <View style={[styles.pastHint, { paddingBottom: insets.bottom + 16 }]}>
+          <Text style={styles.pastHintText}>
+            Viewing Day {viewDay} · spent {formatMoney(spentOnViewDay)}
+          </Text>
+          <Pressable
+            onPress={() => setViewDay(day)}
+            style={({ pressed }) => [styles.pastHintBtn, pressed && { opacity: 0.7 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Back to today"
+          >
+            <ArrowCounterClockwise size={15} color={colors.sageDark} />
+            <Text style={styles.pastHintBtnText}>Back to today</Text>
+          </Pressable>
+        </View>
+      ) : (
       <View style={[styles.composer, { paddingBottom: insets.bottom + 16 }]}>
         <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
           <TextInput
@@ -489,13 +592,17 @@ export default function MoneyGameScreen() {
           {!!spendErrorText && <Text style={styles.spendError}>{spendErrorText}</Text>}
         </View>
       </View>
+      )}
 
       {/* ── Settings sheet ───────────────────────────────────── */}
       <SettingsSheet
         visible={showSettings}
         day={day}
         bankBalance={balance}
-        onDayChange={setDay}
+        onDayChange={(n) => {
+          setDay(n);
+          setViewDay(n);
+        }}
         onBalanceChange={(v) => setTotalReceived(v + totalSpent)}
         onReset={handleReset}
         onUndo={handleUndoReset}
@@ -659,7 +766,7 @@ function DepositNotification({
 /* Spend row                                                     */
 /* ──────────────────────────────────────────────────────────── */
 
-function SpendRow({ item, onRemove }: { item: SpendItem; onRemove: () => void }) {
+function SpendRow({ item, onRemove }: { item: SpendItem; onRemove?: () => void }) {
   return (
     <View style={styles.row}>
       <View style={styles.rowTile}>
@@ -677,15 +784,27 @@ function SpendRow({ item, onRemove }: { item: SpendItem; onRemove: () => void })
           <Text style={styles.rowChipText}>{formatMoney(item.amount)}</Text>
         </View>
       </View>
-      <Pressable
-        onPress={onRemove}
-        style={styles.removeBtn}
-        hitSlop={10}
-        accessibilityRole="button"
-        accessibilityLabel={`Remove ${item.description}`}
-      >
-        <X size={16} color={colors.textMuted} />
-      </Pressable>
+      {onRemove && (
+        <Pressable
+          onPress={onRemove}
+          style={styles.removeBtn}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.description}`}
+        >
+          <X size={16} color={colors.textMuted} />
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/* A single look-back stat (label + money), used in the history summary card. */
+function LookBackStat({ label, value }: { label: string; value: number }) {
+  return (
+    <View style={styles.lookBackStat}>
+      <Text style={styles.lookBackStatLabel}>{label}</Text>
+      <Text style={styles.lookBackStatValue}>{formatMoney(value)}</Text>
     </View>
   );
 }
@@ -694,7 +813,15 @@ function SpendRow({ item, onRemove }: { item: SpendItem; onRemove: () => void })
 /* Empty state                                                   */
 /* ──────────────────────────────────────────────────────────── */
 
-function EmptyState({ dayDeposit }: { dayDeposit: number }) {
+function EmptyState({
+  dayDeposit,
+  day,
+  viewingPast = false,
+}: {
+  dayDeposit: number;
+  day?: number;
+  viewingPast?: boolean;
+}) {
   return (
     <View style={styles.empty}>
       <View style={styles.emptyGlyph}>
@@ -710,11 +837,20 @@ function EmptyState({ dayDeposit }: { dayDeposit: number }) {
           </Twinkle>
         </View>
       </View>
-      <Text style={styles.emptyTitle}>{formatMoney(dayDeposit)} is waiting</Text>
-      <Text style={styles.emptyBody}>
-        Start small or start big. A dinner. A donation. The house. The point is the feeling of
-        having it.
-      </Text>
+      {viewingPast ? (
+        <>
+          <Text style={styles.emptyTitle}>Nothing recorded for Day {day}</Text>
+          <Text style={styles.emptyBody}>No spending was logged on this day.</Text>
+        </>
+      ) : (
+        <>
+          <Text style={styles.emptyTitle}>{formatMoney(dayDeposit)} is waiting</Text>
+          <Text style={styles.emptyBody}>
+            Start small or start big. A dinner. A donation. The house. The point is the feeling
+            of having it.
+          </Text>
+        </>
+      )}
     </View>
   );
 }
@@ -1168,6 +1304,108 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   countPillText: { fontFamily: fonts.bold, fontSize: 11, fontWeight: '700', color: '#fff' },
+
+  /* Look-back summary */
+  lookBackCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.secondaryBorder,
+    borderRadius: radius.lg,
+    paddingHorizontal: space.md,
+    paddingVertical: space.md,
+    marginBottom: space.md,
+  },
+  lookBackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: space.sm,
+  },
+  lookBackTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    color: colors.textMuted,
+  },
+  lookBackRow: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
+  lookBackStat: { flex: 1, minWidth: 0 },
+  lookBackStatLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.textMuted,
+    marginBottom: 2,
+  },
+  lookBackStatValue: {
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.textPrimary,
+    letterSpacing: -0.4,
+  },
+
+  /* History day chips */
+  historyChipsScroll: { flexGrow: 0, marginBottom: space.md },
+  historyChipsRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs + 2 },
+  historyChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.secondaryBorder,
+    backgroundColor: 'transparent',
+  },
+  historyChipActive: { backgroundColor: colors.accent, borderColor: colors.accent },
+  historyChipPressed: { backgroundColor: colors.surfaceWarm },
+  historyChipText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.textSecondary,
+  },
+  historyChipTextActive: { color: '#fff' },
+  historyChipCount: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11,
+    lineHeight: 14,
+    color: colors.textMuted,
+  },
+  historyChipCountActive: { color: 'rgba(255,255,255,0.82)' },
+
+  /* Past-day hint bar (replaces composer when browsing history) */
+  pastHint: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingHorizontal: space.lg,
+    paddingTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.sm,
+  },
+  pastHintText: {
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: colors.textSecondary,
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  pastHintBtn: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: colors.sage,
+    backgroundColor: colors.sageTint,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  pastHintBtnText: { fontFamily: fonts.semiBold, fontSize: 13, fontWeight: '600', color: colors.sageDark },
 
   /* Row */
   row: {

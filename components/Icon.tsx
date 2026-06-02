@@ -25,6 +25,7 @@ import {
   ArrowCounterClockwise as PhosphorArrowCounterClockwise,
   CaretLeft as PhosphorCaretLeft,
   CaretRight as PhosphorCaretRight,
+  ClockCounterClockwise as PhosphorClockCounterClockwise,
   Gear as PhosphorGear,
   Image as PhosphorImage,
   Microphone as PhosphorMicrophone,
@@ -64,6 +65,10 @@ export function CaretRight(props: AppIconProps) {
 
 export function ArrowCounterClockwise(props: AppIconProps) {
   return <PhosphorArrowCounterClockwise {...withIconDefaults(props)} />;
+}
+
+export function ClockCounterClockwise(props: AppIconProps) {
+  return <PhosphorClockCounterClockwise {...withIconDefaults(props)} />;
 }
 
 export function Banknote(props: AppIconProps) {

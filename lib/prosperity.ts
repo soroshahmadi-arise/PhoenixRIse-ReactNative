@@ -36,6 +36,32 @@ export const itemsForDay = (items: SpendItem[], day: number) =>
 export const spentForDay = (items: SpendItem[], day: number) =>
   itemsForDay(items, day).reduce((sum, item) => sum + item.amount, 0);
 
+/** Distinct game days with at least one item, most-recent first. */
+export const daysWithSpending = (items: SpendItem[]): number[] =>
+  Array.from(new Set(items.map((item) => item.day))).sort((a, b) => b - a);
+
+export type LookBack = { yesterday: number; last7: number; last30: number };
+
+/**
+ * Totals for prior periods relative to currentDay (currentDay is EXCLUDED).
+ * Windows are clamped at day 1 so no non-positive days are ever read.
+ *   yesterday = day-1; last7 = days [day-7 .. day-1]; last30 = [day-30 .. day-1].
+ */
+export const lookBack = (items: SpendItem[], currentDay: number): LookBack => {
+  const sumWindow = (span: number) => {
+    let total = 0;
+    for (let d = Math.max(1, currentDay - span); d <= currentDay - 1; d++) {
+      total += spentForDay(items, d);
+    }
+    return total;
+  };
+  return {
+    yesterday: currentDay > 1 ? spentForDay(items, currentDay - 1) : 0,
+    last7: sumWindow(7),
+    last30: sumWindow(30),
+  };
+};
+
 export const balanceFor = (totalReceived: number, totalSpent: number) =>
   Math.max(0, totalReceived - totalSpent);
 

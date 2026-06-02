@@ -4,10 +4,12 @@ import {
   balanceFor,
   canSpendAmount,
   completeDay,
+  daysWithSpending,
   depositForDay,
   formatMoney,
   itemsForDay,
   isMilestoneDay,
+  lookBack,
   remainingForDay,
   spentForDay,
   totalSpentForItems,
@@ -112,5 +114,36 @@ describe('game flow transitions', () => {
     const completed = completeDay({ ...baseState, accepted: true });
     expect(completed.day).toBe(3);
     expect(completed.accepted).toBe(false);
+  });
+});
+
+describe('daysWithSpending', () => {
+  it('returns distinct days, most-recent first', () => {
+    expect(daysWithSpending(items)).toEqual([2, 1]);
+  });
+
+  it('returns an empty array when there are no items', () => {
+    expect(daysWithSpending([])).toEqual([]);
+  });
+});
+
+describe('lookBack', () => {
+  it('returns zeros on day 1 (no prior days exist)', () => {
+    expect(lookBack(items, 1)).toEqual({ yesterday: 0, last7: 0, last30: 0 });
+  });
+
+  it('counts the single prior day across every window', () => {
+    // currentDay 2 → only day 1 (720) is "before"; clamps so no day < 1 is read.
+    expect(lookBack(items, 2)).toEqual({ yesterday: 720, last7: 720, last30: 720 });
+  });
+
+  it('clamps the 7-day window but keeps the 30-day window reaching day 1', () => {
+    const spread: SpendItem[] = [
+      { id: 'd1', description: 'Day 1', amount: 100, day: 1 },
+      { id: 'd3', description: 'Day 3', amount: 50, day: 3 },
+    ];
+    // currentDay 9: yesterday = day 8 (0). last7 covers days 2..8 → only day 3 ($50).
+    // last30 covers days 1..8 → day 1 ($100) + day 3 ($50) = $150.
+    expect(lookBack(spread, 9)).toEqual({ yesterday: 0, last7: 50, last30: 150 });
   });
 });
