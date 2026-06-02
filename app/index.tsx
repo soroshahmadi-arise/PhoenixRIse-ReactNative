@@ -1,27 +1,45 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppName, INPUT_HEIGHT, theme, typography } from '@/lib/constants';
-
-function timeOfDayGreeting(now: Date = new Date()): string {
-  const h = now.getHours();
-  if (h < 5) return 'Resting hours';
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  if (h < 21) return 'Good evening';
-  return 'Good night';
-}
+import { timeOfDayGreeting } from '@/lib/greeting';
+import { NAME_KEY } from '@/lib/user';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const greeting = useMemo(() => timeOfDayGreeting(), []);
+  const [ready, setReady] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    AsyncStorage.getItem(NAME_KEY).then((name) => {
+      if (cancelled) return;
+      if (!name) {
+        router.replace('/onboarding');
+        return;
+      }
+      setUserName(name);
+      setReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  const greetingText = useMemo(() => {
+    const base = timeOfDayGreeting();
+    return userName ? `${base}, ${userName}` : base;
+  }, [userName]);
 
   const handleGratitude = () => {
     router.push('/gratitude');
   };
+
+  if (!ready) return <View style={styles.root} />;
 
   const primaryBtn = theme.buttons.primary;
 
@@ -41,7 +59,7 @@ export default function HomeScreen() {
         <View style={styles.container}>
           <View style={styles.top}>
             <Text style={styles.brand}>{AppName}</Text>
-            <Text style={styles.greeting}>{greeting}</Text>
+            <Text style={styles.greeting}>{greetingText}</Text>
           </View>
 
           <View style={styles.hero}>
@@ -78,9 +96,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  safe: {
-    flex: 1,
-  },
+  safe: { flex: 1 },
   container: {
     flex: 1,
     width: '100%',
