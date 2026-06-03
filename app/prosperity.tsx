@@ -130,7 +130,6 @@ export default function MoneyGameScreen() {
   // history browsing
   const isViewingToday = viewDay === day;
   const viewItems = useMemo(() => itemsForDay(items, viewDay), [items, viewDay]);
-  const spentOnViewDay = useMemo(() => spentForDay(items, viewDay), [items, viewDay]);
   const dayChips = useMemo(() => {
     const past = daysWithSpending(items).filter((d) => d < day);
     return [day, ...past].map((d) => ({
@@ -233,6 +232,8 @@ export default function MoneyGameScreen() {
     if (!canAdd) return;
     const newId = uid();
     LayoutAnimation.configureNext(spendLayoutAnim);
+    // spending always lands on today — snap the view there so it's visible
+    setViewDay(day);
     setItems((prev) => [
       ...prev,
       {
@@ -381,9 +382,8 @@ export default function MoneyGameScreen() {
 
         </View>
 
-        {isViewingToday ? (
-          <View style={styles.composerInline}>
-            <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
+        <View style={styles.composerInline}>
+          <View style={[styles.inputCard, focused && styles.inputCardFocused]}>
               <TextInput
                 value={draftDesc}
                 onChangeText={(text) => {
@@ -491,22 +491,6 @@ export default function MoneyGameScreen() {
               {!!spendErrorText && <Text style={styles.spendError}>{spendErrorText}</Text>}
             </View>
           </View>
-        ) : (
-          <View style={styles.pastHintInline}>
-            <Text style={styles.pastHintText}>
-              Viewing Day {viewDay} · spent {formatMoney(spentOnViewDay)}
-            </Text>
-            <Pressable
-              onPress={() => setViewDay(day)}
-              style={({ pressed }) => [styles.pastHintBtn, pressed && { opacity: 0.7 }]}
-              accessibilityRole="button"
-              accessibilityLabel="Back to today"
-            >
-              <ArrowCounterClockwise size={15} color={colors.sageDark} />
-              <Text style={styles.pastHintBtnText}>Back to today</Text>
-            </Pressable>
-          </View>
-        )}
 
         {dayChips.length > 1 && (
           <ScrollView
@@ -1388,40 +1372,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
   },
   historyChipCountActive: { color: 'rgba(255,255,255,0.82)' },
-
-  /* Past-day hint card (replaces the composer when browsing history) */
-  pastHintInline: {
-    backgroundColor: colors.surfaceWarm,
-    borderWidth: 1,
-    borderColor: colors.secondaryBorder,
-    borderRadius: radius.lg,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm + 2,
-    marginBottom: space.lg,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: space.sm,
-  },
-  pastHintText: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    color: colors.textSecondary,
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  pastHintBtn: {
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: radius.pill,
-    borderWidth: 1.5,
-    borderColor: colors.sage,
-    backgroundColor: colors.sageTint,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  pastHintBtnText: { fontFamily: fonts.semiBold, fontSize: 13, fontWeight: '600', color: colors.sageDark },
 
   /* Row */
   row: {
